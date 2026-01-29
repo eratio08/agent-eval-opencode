@@ -34,7 +34,7 @@ function getPackageJson(projectName: string): string {
       private: true,
       type: 'module',
       devDependencies: {
-        '@judegao/eval': '^1.0.0',
+        'agent-eval': '^0.0.1',
         '@types/node': '^22.0.0',
         typescript: '^5.6.0',
         vitest: '^2.1.0',
@@ -84,7 +84,7 @@ results/
  * Get the default experiment configuration template (Claude Code).
  */
 function getCCExperiment(): string {
-  return `import type { ExperimentConfig } from '@judegao/eval';
+  return `import type { ExperimentConfig } from 'agent-eval';
 
 const config: ExperimentConfig = {
   agent: 'vercel-ai-gateway/claude-code',
@@ -102,7 +102,7 @@ export default config;
  * Get the Codex experiment configuration template.
  */
 function getCodexExperiment(): string {
-  return `import type { ExperimentConfig } from '@judegao/eval';
+  return `import type { ExperimentConfig } from 'agent-eval';
 
 const config: ExperimentConfig = {
   agent: 'vercel-ai-gateway/codex',
@@ -299,6 +299,6 @@ Next steps:
   4. npx agent-eval
 
 For more information, see the documentation at:
-  https://github.com/gaojude/eval
+  https://github.com/vercel-labs/agent-eval
 `;
 }

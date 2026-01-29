@@ -1,7 +1,11 @@
 {
-  "name": "@judegao/eval",
-  "version": "1.2.0",
+  "name": "agent-eval",
+  "version": "0.0.1",
   "description": "Framework for testing AI coding agents in isolated sandboxes",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vercel-labs/agent-eval.git"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

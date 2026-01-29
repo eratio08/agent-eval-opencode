@@ -1,5 +1,5 @@
 /**
- * @judegao/eval
+ * agent-eval
  *
  * Framework for testing AI coding agents in isolated sandboxes.
  */

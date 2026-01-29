@@ -1,4 +1,4 @@
-# @judegao/eval
+# agent-eval
 
 Test AI coding agents on your framework. Measure what actually works.
 
@@ -16,7 +16,7 @@ You're building a frontend framework and want AI agents to work well with it. Bu
 
 ```bash
 # Create a new eval project
-npx @judegao/eval init my-framework-evals
+npx agent-eval init my-framework-evals
 cd my-framework-evals
 
 # Install dependencies
@@ -41,7 +41,7 @@ The real power is comparing different approaches. Create multiple experiment con
 
 ```typescript
 // experiments/control.ts
-import type { ExperimentConfig } from '@judegao/eval';
+import type { ExperimentConfig } from 'agent-eval';
 
 const config: ExperimentConfig = {
   agent: 'vercel-ai-gateway/claude-code',
@@ -57,7 +57,7 @@ export default config;
 
 ```typescript
 // experiments/with-mcp.ts
-import type { ExperimentConfig } from '@judegao/eval';
+import type { ExperimentConfig } from 'agent-eval';
 
 const config: ExperimentConfig = {
   agent: 'vercel-ai-gateway/claude-code',
@@ -189,7 +189,7 @@ See the Environment Variables section below for setup instructions.
 ### Full Configuration
 
 ```typescript
-import type { ExperimentConfig } from '@judegao/eval';
+import type { ExperimentConfig } from 'agent-eval';
 
 const config: ExperimentConfig = {
   // Required: which agent and authentication to use
@@ -210,10 +210,10 @@ const config: ExperimentConfig = {
   // Timeout per run in seconds
   timeout: 300,
 
-  // Filter which evals to run
-  evals: '*',                              // all
-  evals: ['specific-eval'],                // by name
-  evals: (name) => name.startsWith('api-'), // by function
+  // Filter which evals to run (pick one)
+  evals: '*',                                // all (default)
+  // evals: ['specific-eval'],              // by name
+  // evals: (name) => name.startsWith('api-'), // by function
 
   // Setup function for environment configuration
   setup: async (sandbox) => {
@@ -231,7 +231,7 @@ export default config;
 
 Create a new eval project:
 ```bash
-npx @judegao/eval init my-evals
+npx agent-eval init my-evals
 ```
 
 ### `<experiment>`
@@ -290,31 +290,35 @@ cat results/with-mcp/*/experiment.json | jq '.evals[] | {name, passRate}'
 
 ## Environment Variables
 
+Every run requires **two things**: an API key for the agent and a token for the Vercel sandbox. The exact variables depend on which authentication mode you use.
+
+| Variable | Required when | Description |
+|---|---|---|
+| `AI_GATEWAY_API_KEY` | `agent: 'vercel-ai-gateway/...'` | Vercel AI Gateway key — works for all agents |
+| `ANTHROPIC_API_KEY` | `agent: 'claude-code'` | Direct Anthropic API key (`sk-ant-...`) |
+| `OPENAI_API_KEY` | `agent: 'codex'` | Direct OpenAI API key (`sk-proj-...`) |
+| `VERCEL_TOKEN` | Always (pick one) | Vercel personal access token — for local dev |
+| `VERCEL_OIDC_TOKEN` | Always (pick one) | Vercel OIDC token — for CI/CD pipelines |
+
+> You always need **one agent key** + **one sandbox token**.
+
 ### Vercel AI Gateway (Recommended)
 
-The default authentication method uses Vercel AI Gateway for unified billing and observability:
+Use `vercel-ai-gateway/` prefixed agents. One key for all models.
 
 ```bash
-# Required: Vercel AI Gateway API key
-# Get yours at: https://vercel.com/dashboard -> AI Gateway
+# Agent access — get yours at https://vercel.com/dashboard -> AI Gateway
 AI_GATEWAY_API_KEY=your-ai-gateway-api-key
 
-# Required: Vercel sandbox access (for running agent code)
-# Create at: https://vercel.com/account/tokens
-VERCEL_TOKEN=...
-# OR (for CI/CD pipelines)
-VERCEL_OIDC_TOKEN=...
+# Sandbox access — create at https://vercel.com/account/tokens
+VERCEL_TOKEN=your-vercel-token
+# OR for CI/CD:
+# VERCEL_OIDC_TOKEN=your-oidc-token
 ```
-
-Benefits:
-- Single API key for Claude Code, Codex, and 200+ other models
-- Unified billing - one invoice instead of multiple provider accounts
-- Observability - request traces and spend tracking in Vercel dashboard
-- Automatic fallbacks - resilience when providers have issues
 
 ### Direct API Keys (Alternative)
 
-You can also use provider API keys directly by removing the `vercel-ai-gateway/` prefix:
+Remove the `vercel-ai-gateway/` prefix and use provider keys directly:
 
 ```bash
 # For agent: 'claude-code'
@@ -323,9 +327,30 @@ ANTHROPIC_API_KEY=sk-ant-...
 # For agent: 'codex'
 OPENAI_API_KEY=sk-proj-...
 
-# Still required for sandbox
-VERCEL_TOKEN=...  # or VERCEL_OIDC_TOKEN
+# Sandbox access is still required
+VERCEL_TOKEN=your-vercel-token
 ```
+
+### `.env` Setup
+
+The `init` command generates a `.env.example` file. Copy it and fill in your keys:
+
+```bash
+cp .env.example .env
+```
+
+The framework loads `.env` automatically via [dotenv](https://github.com/motdotla/dotenv).
+
+### Vercel Employees
+
+If this project is linked to a Vercel project that already has the required environment variables configured, you can pull them directly:
+
+```bash
+vc link
+vc env pull
+```
+
+This writes a `.env.local` file with all the project's environment variables — no manual key setup needed.
 
 ## Tips
 

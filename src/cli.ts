@@ -23,7 +23,7 @@ const program = new Command();
 program
   .name('agent-eval')
   .description('Framework for testing AI coding agents in isolated sandboxes')
-  .version('1.1.1');
+  .version('0.0.1');
 
 /**
  * Resolve config path shorthand.
