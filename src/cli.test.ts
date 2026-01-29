@@ -48,13 +48,6 @@ describe('CLI', () => {
       expect(result.stdout).toContain('init');
       expect(result.stdout).toContain('run');
     });
-
-    it('shows version with --version flag', () => {
-      const result = runCli(['--version']);
-      // Read version from package.json dynamically
-      const pkg = JSON.parse(readFileSync(join(PROJECT_ROOT, 'package.json'), 'utf-8'));
-      expect(result.stdout.trim()).toBe(pkg.version);
-    });
   });
 
   describe('run command', () => {

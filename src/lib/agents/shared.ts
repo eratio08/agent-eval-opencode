@@ -15,6 +15,35 @@ export interface ValidationResults {
 }
 
 /**
+ * Detect which eval file exists in the sandbox (EVAL.ts or EVAL.tsx).
+ * Returns the filename if found, or 'EVAL.ts' as fallback.
+ */
+async function detectEvalFile(sandbox: SandboxManager): Promise<string> {
+  try {
+    // Check for EVAL.tsx first (prefer JSX if both exist)
+    const tsxResult = await sandbox.runCommand('test', ['-f', 'EVAL.tsx']);
+    if (tsxResult.exitCode === 0) {
+      return 'EVAL.tsx';
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  try {
+    // Check for EVAL.ts
+    const tsResult = await sandbox.runCommand('test', ['-f', 'EVAL.ts']);
+    if (tsResult.exitCode === 0) {
+      return 'EVAL.ts';
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  // Default to EVAL.ts (will fail later if it doesn't exist)
+  return 'EVAL.ts';
+}
+
+/**
  * Run validation scripts in the sandbox.
  */
 export async function runValidation(
@@ -26,8 +55,11 @@ export async function runValidation(
     scripts: {},
   };
 
-  // Always run vitest for EVAL.ts (explicitly specify the file)
-  const testResult = await sandbox.runCommand('npx', ['vitest', 'run', 'EVAL.ts']);
+  // Detect which eval file exists (EVAL.ts or EVAL.tsx)
+  const evalFile = await detectEvalFile(sandbox);
+
+  // Always run vitest for the eval file (explicitly specify the file)
+  const testResult = await sandbox.runCommand('npx', ['vitest', 'run', evalFile]);
   results.test = {
     success: testResult.exitCode === 0,
     output: testResult.stdout + testResult.stderr,
@@ -87,15 +119,18 @@ export async function captureGeneratedFiles(sandbox: SandboxManager): Promise<Re
 }
 
 /**
- * Create vitest config for running EVAL.ts.
+ * Create vitest config for running EVAL.ts or EVAL.tsx.
  */
 export async function createVitestConfig(sandbox: SandboxManager): Promise<void> {
+  // Detect which eval file exists
+  const evalFile = await detectEvalFile(sandbox);
+
   await sandbox.writeFiles({
     'vitest.config.ts': `
 import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
-    include: ['EVAL.ts'],
+    include: ['${evalFile}'],
     globals: false,
   },
 });

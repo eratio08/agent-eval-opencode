@@ -242,7 +242,7 @@ IMPORTANT: Do not run npm, pnpm, yarn, or any package manager commands. Dependen
       // Upload test files for validation
       await sandbox.uploadFiles(testFiles);
 
-      // Create vitest config for EVAL.ts
+      // Create vitest config for EVAL.ts/tsx
       await createVitestConfig(sandbox);
 
       // Extract transcript from the Codex JSON output (--json flag outputs JSONL)
