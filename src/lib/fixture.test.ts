@@ -64,6 +64,18 @@ describe('fixture discovery and validation', () => {
       expect(missing).toContain('package.json');
       expect(missing).not.toContain('PROMPT.md');
     });
+
+    it('enforces case-sensitive filenames', () => {
+      const path = createTestFixture('wrong-case', {
+        'prompt.md': '# Task', // Wrong case
+        'eval.ts': 'test',     // Wrong case
+        'package.json': JSON.stringify({ type: 'module' }),
+      });
+
+      const missing = validateFixtureFiles(path);
+      expect(missing).toContain('PROMPT.md'); // Should fail even on Mac
+      expect(missing).toContain('EVAL.ts or EVAL.tsx'); // Should fail even on Mac
+    });
   });
 
   describe('validatePackageJson', () => {

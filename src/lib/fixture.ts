@@ -21,6 +21,19 @@ export class FixtureValidationError extends Error {
 }
 
 /**
+ * Check if a file exists with exact case match (case-sensitive even on Mac/Windows).
+ * Returns true only if the file exists AND the case matches exactly.
+ */
+function existsWithExactCase(dirPath: string, fileName: string): boolean {
+  try {
+    const files = readdirSync(dirPath);
+    return files.includes(fileName);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Discovers all eval fixtures in a directory.
  * Each subdirectory is considered a potential eval fixture.
  */
@@ -52,24 +65,24 @@ export function discoverFixtures(evalsDir: string): string[] {
 }
 
 /**
- * Validates that a fixture has all required files.
+ * Validates that a fixture has all required files with correct case.
  * Returns an array of missing file names, or empty array if valid.
  * Note: Accepts either EVAL.ts or EVAL.tsx for the eval file.
+ * Case-sensitive: 'prompt.md' will fail even on Mac/Windows.
  */
 export function validateFixtureFiles(fixturePath: string): string[] {
   const missing: string[] = [];
 
   for (const file of REQUIRED_EVAL_FILES) {
-    // Special case: Accept either EVAL.ts or EVAL.tsx
+    // Special case: Accept either EVAL.ts or EVAL.tsx (both case-sensitive)
     if (file === 'EVAL.ts') {
-      const hasEvalTs = existsSync(join(fixturePath, 'EVAL.ts'));
-      const hasEvalTsx = existsSync(join(fixturePath, 'EVAL.tsx'));
+      const hasEvalTs = existsWithExactCase(fixturePath, 'EVAL.ts');
+      const hasEvalTsx = existsWithExactCase(fixturePath, 'EVAL.tsx');
       if (!hasEvalTs && !hasEvalTsx) {
         missing.push('EVAL.ts or EVAL.tsx');
       }
     } else {
-      const filePath = join(fixturePath, file);
-      if (!existsSync(filePath)) {
+      if (!existsWithExactCase(fixturePath, file)) {
         missing.push(file);
       }
     }
@@ -133,7 +146,10 @@ export function loadFixture(evalsDir: string, name: string): EvalFixture {
     throw new FixtureValidationError(name, pkgValidation.error);
   }
 
-  // Read prompt
+  // Read prompt (case-sensitive check)
+  if (!existsWithExactCase(fixturePath, 'PROMPT.md')) {
+    throw new FixtureValidationError(name, 'PROMPT.md not found (case-sensitive: must be uppercase)');
+  }
   const promptPath = join(fixturePath, 'PROMPT.md');
   const prompt = readFileSync(promptPath, 'utf-8');
 

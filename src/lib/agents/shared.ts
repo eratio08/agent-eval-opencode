@@ -16,24 +16,25 @@ export interface ValidationResults {
 
 /**
  * Detect which eval file exists in the sandbox (EVAL.ts or EVAL.tsx).
+ * Case-sensitive: Only matches exact uppercase filenames.
  * Returns the filename if found, or 'EVAL.ts' as fallback.
  */
 async function detectEvalFile(sandbox: SandboxManager): Promise<string> {
   try {
-    // Check for EVAL.tsx first (prefer JSX if both exist)
-    const tsxResult = await sandbox.runCommand('test', ['-f', 'EVAL.tsx']);
-    if (tsxResult.exitCode === 0) {
-      return 'EVAL.tsx';
-    }
-  } catch {
-    // Ignore errors
-  }
+    // List files in current directory and check for exact case match
+    const lsResult = await sandbox.runShell('ls -1');
+    if (lsResult.exitCode === 0) {
+      const files = lsResult.stdout.split('\n').map((f) => f.trim());
 
-  try {
-    // Check for EVAL.ts
-    const tsResult = await sandbox.runCommand('test', ['-f', 'EVAL.ts']);
-    if (tsResult.exitCode === 0) {
-      return 'EVAL.ts';
+      // Check for EVAL.tsx first (prefer JSX if both exist)
+      if (files.includes('EVAL.tsx')) {
+        return 'EVAL.tsx';
+      }
+
+      // Check for EVAL.ts
+      if (files.includes('EVAL.ts')) {
+        return 'EVAL.ts';
+      }
     }
   } catch {
     // Ignore errors
