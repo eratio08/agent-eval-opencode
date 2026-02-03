@@ -119,6 +119,16 @@ export async function runExperiment(
     const timeoutMs = config.timeout * 1000;
     const startTime = Date.now();
 
+    // Create per-attempt controller for timeout cleanup
+    const attemptController = new AbortController();
+
+    // Propagate earlyExit abort to this attempt's controller
+    if (config.earlyExit) {
+      controller.signal.addEventListener('abort', () => attemptController.abort(), { once: true });
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     const agentResult = await Promise.race([
       agent.run(fixture.path, {
         prompt: fixture.prompt,
@@ -127,14 +137,15 @@ export async function runExperiment(
         apiKey,
         setup: config.setup,
         scripts: config.scripts,
-        signal: config.earlyExit ? controller.signal : undefined,
+        signal: attemptController.signal,
+        sandbox: config.sandbox,
       }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Eval timed out after ${config.timeout}s`)),
-          timeoutMs
-        )
-      ),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          attemptController.abort(); // Signal agent to clean up sandbox
+          reject(new Error(`Eval timed out after ${config.timeout}s`));
+        }, timeoutMs);
+      }),
     ]).catch((error) => {
       // Convert timeout error to AgentResult format
       if (error instanceof Error && error.message.includes('timed out')) {
@@ -147,6 +158,9 @@ export async function runExperiment(
       }
       throw error;
     });
+
+    // Clear timeout if agent completed before timeout
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Check if this was aborted
     if (agentResult.error === 'Aborted' || agentResult.error === 'Aborted before start') {
@@ -241,6 +255,7 @@ export async function runSingleEval(
     apiKey: string;
     setup?: ResolvedExperimentConfig['setup'];
     scripts?: string[];
+    sandbox?: ResolvedExperimentConfig['sandbox'];
     verbose?: boolean;
   }
 ): Promise<EvalRunData> {
@@ -253,6 +268,7 @@ export async function runSingleEval(
     apiKey: options.apiKey,
     setup: options.setup,
     scripts: options.scripts,
+    sandbox: options.sandbox,
   });
 
   return agentResultToEvalRunData(agentResult);

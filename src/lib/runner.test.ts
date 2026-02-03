@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import { runExperiment } from './runner.js';
 import type { ResolvedExperimentConfig, EvalFixture } from './types.js';
-import type { Agent, AgentResult } from './agents/types.js';
+import type { Agent } from './agents/types.js';
 import * as agentsIndex from './agents/index.js';
 
 const TEST_DIR = '/tmp/eval-framework-runner-test';
@@ -360,7 +360,7 @@ describe('runExperiment', () => {
       expect(abortEvents.length).toBeGreaterThanOrEqual(2); // At minimum the slow runs got it
     });
 
-    it('does not pass signal when earlyExit is false', async () => {
+    it('always passes signal for timeout cleanup even when earlyExit is false', async () => {
       const receivedSignals: (AbortSignal | undefined)[] = [];
 
       const mockAgent: Agent = {
@@ -409,8 +409,8 @@ describe('runExperiment', () => {
         experimentName: 'test-experiment',
       });
 
-      // No signals should be passed when earlyExit is false
-      expect(receivedSignals.every((s) => s === undefined)).toBe(true);
+      // Signals should always be passed for timeout cleanup
+      expect(receivedSignals.every((s) => s instanceof AbortSignal)).toBe(true);
     });
   });
 
@@ -550,7 +550,8 @@ describe('runExperiment', () => {
         apiKey: 'my-api-key',
         setup: mockSetup,
         scripts: ['build', 'lint'],
-        signal: undefined, // No signal when earlyExit is false
+        signal: expect.any(AbortSignal), // Signal always passed for timeout cleanup
+        sandbox: undefined,
       });
     });
   });
@@ -613,6 +614,73 @@ describe('runExperiment', () => {
 
       // Should not wait for full 500ms agent duration
       expect(elapsed).toBeLessThan(300);
+    });
+
+    it('signals abort to agent on timeout for cleanup', async () => {
+      let receivedSignal: AbortSignal | undefined;
+      let signalAborted = false;
+
+      const mockAgent: Agent = {
+        name: 'mock-agent',
+        displayName: 'Mock Agent',
+        getApiKeyEnvVar: () => 'MOCK_API_KEY',
+        getDefaultModel: () => 'mock-model',
+        run: vi.fn().mockImplementation(async (_path: string, options: { signal?: AbortSignal }) => {
+          receivedSignal = options.signal;
+
+          // Listen for abort
+          if (receivedSignal) {
+            receivedSignal.addEventListener('abort', () => {
+              signalAborted = true;
+            });
+          }
+
+          // Simulate slow agent
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return {
+            success: true,
+            output: 'Done',
+            duration: 500,
+            testResult: { success: true, output: 'Test passed' },
+            scriptsResults: {},
+          };
+        }),
+      };
+
+      vi.spyOn(agentsIndex, 'getAgent').mockReturnValue(mockAgent);
+
+      const config: ResolvedExperimentConfig = {
+        agent: 'claude-code',
+        model: 'sonnet',
+        evals: ['test-eval'],
+        runs: 1,
+        earlyExit: false,
+        scripts: [],
+        timeout: 0.1, // 100ms
+      };
+
+      const fixtures: EvalFixture[] = [
+        {
+          name: 'test-eval',
+          path: '/fake/path',
+          prompt: 'Test prompt',
+          isModule: true,
+        },
+      ];
+
+      await runExperiment({
+        config,
+        fixtures,
+        apiKey: 'test-key',
+        resultsDir: TEST_DIR,
+        experimentName: 'test-experiment',
+      });
+
+      // Agent should have received a signal
+      expect(receivedSignal).toBeDefined();
+
+      // Signal should have been aborted on timeout
+      expect(signalAborted).toBe(true);
     });
   });
 });
