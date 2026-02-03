@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import { runExperiment } from './runner.js';
 import type { ResolvedExperimentConfig, EvalFixture } from './types.js';
-import type { Agent } from './agents/types.js';
+import type { Agent, AgentResult } from './agents/types.js';
 import * as agentsIndex from './agents/index.js';
 
 const TEST_DIR = '/tmp/eval-framework-runner-test';
@@ -552,6 +552,67 @@ describe('runExperiment', () => {
         scripts: ['build', 'lint'],
         signal: undefined, // No signal when earlyExit is false
       });
+    });
+  });
+
+  describe('timeout enforcement', () => {
+    it('times out and returns error when agent exceeds timeout', async () => {
+      const mockAgent: Agent = {
+        name: 'mock-agent',
+        displayName: 'Mock Agent',
+        getApiKeyEnvVar: () => 'MOCK_API_KEY',
+        getDefaultModel: () => 'mock-model',
+        run: vi.fn().mockImplementation(async () => {
+          // Simulate agent taking 500ms (longer than 100ms timeout)
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return {
+            success: true,
+            output: 'Should not reach this',
+            duration: 500,
+            testResult: { success: true, output: 'Test passed' },
+            scriptsResults: {},
+          };
+        }),
+      };
+
+      vi.spyOn(agentsIndex, 'getAgent').mockReturnValue(mockAgent);
+
+      const config: ResolvedExperimentConfig = {
+        agent: 'claude-code',
+        model: 'sonnet',
+        evals: ['test-eval'],
+        runs: 1,
+        earlyExit: false,
+        scripts: [],
+        timeout: 0.1, // 100ms in seconds
+      };
+
+      const fixtures: EvalFixture[] = [
+        {
+          name: 'test-eval',
+          path: '/fake/path',
+          prompt: 'Test prompt',
+          isModule: true,
+        },
+      ];
+
+      const startTime = Date.now();
+      const results = await runExperiment({
+        config,
+        fixtures,
+        apiKey: 'test-key',
+        resultsDir: TEST_DIR,
+        experimentName: 'test-experiment',
+      });
+      const elapsed = Date.now() - startTime;
+
+      // Should fail with timeout error
+      expect(results.evals[0].passedRuns).toBe(0);
+      expect(results.evals[0].runs[0].result.status).toBe('failed');
+      expect(results.evals[0].runs[0].result.error).toContain('timed out');
+
+      // Should not wait for full 500ms agent duration
+      expect(elapsed).toBeLessThan(300);
     });
   });
 });
