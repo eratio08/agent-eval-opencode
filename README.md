@@ -205,7 +205,9 @@ Choose your agent and authentication method:
 
 ```typescript
 // Vercel AI Gateway (recommended - unified billing & observability)
-agent: 'vercel-ai-gateway/claude-code'  // or 'vercel-ai-gateway/codex'
+agent: 'vercel-ai-gateway/claude-code'  // Claude Code via AI Gateway
+agent: 'vercel-ai-gateway/codex'        // OpenAI Codex via AI Gateway
+agent: 'vercel-ai-gateway/opencode'     // OpenCode via AI Gateway
 
 // Direct API (uses provider keys directly)
 agent: 'claude-code'  // requires ANTHROPIC_API_KEY
@@ -223,7 +225,10 @@ const config: ExperimentConfig = {
   // Required: which agent and authentication to use
   agent: 'vercel-ai-gateway/claude-code',
 
-  // Model to use (defaults: 'opus' for claude-code, 'openai/gpt-5.2-codex' for codex)
+  // Model to use (defaults vary by agent)
+  // - claude-code: 'opus'
+  // - codex: 'openai/gpt-5.2-codex'
+  // - opencode: 'vercel/anthropic/claude-sonnet-4'
   model: 'opus',
 
   // How many times to run each eval
@@ -322,11 +327,13 @@ Every run requires **two things**: an API key for the agent and a token for the 
 
 | Variable | Required when | Description |
 |---|---|---|
-| `AI_GATEWAY_API_KEY` | `agent: 'vercel-ai-gateway/...'` | Vercel AI Gateway key — works for all agents |
+| `AI_GATEWAY_API_KEY` | `agent: 'vercel-ai-gateway/...'` | Vercel AI Gateway key — works for all agents (claude-code, codex, opencode) |
 | `ANTHROPIC_API_KEY` | `agent: 'claude-code'` | Direct Anthropic API key (`sk-ant-...`) |
 | `OPENAI_API_KEY` | `agent: 'codex'` | Direct OpenAI API key (`sk-proj-...`) |
 | `VERCEL_TOKEN` | Always (pick one) | Vercel personal access token — for local dev |
 | `VERCEL_OIDC_TOKEN` | Always (pick one) | Vercel OIDC token — for CI/CD pipelines |
+
+> **Note:** OpenCode only supports Vercel AI Gateway (`vercel-ai-gateway/opencode`). There is no direct API option for OpenCode.
 
 > You always need **one agent key** + **one sandbox token**.
 
