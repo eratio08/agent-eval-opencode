@@ -14,6 +14,7 @@ import { loadAllFixtures } from './lib/fixture.js';
 import { runExperiment } from './lib/runner.js';
 import { initProject, getPostInitInstructions } from './lib/init.js';
 import { getAgent } from './lib/agents/index.js';
+import { getSandboxBackendInfo } from './lib/sandbox.js';
 
 // Load environment variables
 dotenvConfig();
@@ -96,6 +97,10 @@ async function runExperimentCommand(configInput: string, options: { dry?: boolea
 
     console.log(chalk.blue(`\nRunning ${evalNames.length} eval(s) x ${config.runs} run(s) = ${evalNames.length * config.runs} total runs`));
     console.log(chalk.blue(`Agent: ${config.agent}, Model: ${config.model}, Timeout: ${config.timeout}s, Early Exit: ${config.earlyExit}`));
+
+    // Show which sandbox backend will be used
+    const sandboxInfo = getSandboxBackendInfo();
+    console.log(chalk.blue(`Sandbox: ${sandboxInfo.description}`));
 
     if (options.dry) {
       console.log(chalk.yellow('\n[DRY RUN] Would execute evals here'));

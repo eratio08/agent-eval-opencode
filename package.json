@@ -19,6 +19,10 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:docker": "SANDBOX_BACKEND=docker vitest run src/lib/docker-sandbox.test.ts",
+    "test:integration": "INTEGRATION_TEST=1 vitest run src/integration.test.ts",
+    "test:integration:docker": "SANDBOX_BACKEND=docker INTEGRATION_TEST=1 vitest run src/integration.test.ts",
+    "test:integration:vercel": "SANDBOX_BACKEND=vercel INTEGRATION_TEST=1 vitest run src/integration.test.ts",
     "lint": "eslint src/",
     "prepublishOnly": "npm run build"
   },
@@ -28,12 +32,16 @@
     "ai": "^5.0.11",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "dockerode": "^4.0.9",
     "dotenv": "^16.4.5",
     "glob": "^11.0.0",
+    "tar-stream": "^3.1.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/dockerode": "^4.0.1",
     "@types/node": "^22.0.0",
+    "@types/tar-stream": "^3.1.4",
     "eslint": "^9.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.6.0",
