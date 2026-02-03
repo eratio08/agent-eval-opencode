@@ -7,7 +7,8 @@
 import { Command } from 'commander';
 import { config as dotenvConfig } from 'dotenv';
 import { resolve, dirname, basename } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { loadConfig, resolveEvalNames } from './lib/config.js';
 import { loadAllFixtures } from './lib/fixture.js';
@@ -20,12 +21,16 @@ import { getSandboxBackendInfo } from './lib/sandbox.js';
 dotenvConfig({ path: '.env.local' });
 dotenvConfig();
 
+// Read version from package.json
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8'));
+
 const program = new Command();
 
 program
   .name('agent-eval')
   .description('Framework for testing AI coding agents in isolated sandboxes')
-  .version('0.0.4');
+  .version(pkg.version);
 
 /**
  * Resolve config path shorthand.
