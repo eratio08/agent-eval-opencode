@@ -6,11 +6,13 @@
 import type { Agent, AgentRunOptions, AgentRunResult } from './types.js';
 import type { ModelTier } from '../types.js';
 import {
-  SandboxManager,
+  createSandbox,
   collectLocalFiles,
   splitTestFiles,
   verifyNoTestFiles,
+  type SandboxManager,
 } from '../sandbox.js';
+import type { DockerSandboxManager } from '../docker-sandbox.js';
 import {
   runValidation,
   captureGeneratedFiles,
@@ -18,6 +20,9 @@ import {
   AI_GATEWAY,
   OPENAI_DIRECT,
 } from './shared.js';
+
+/** Union type for sandbox implementations */
+type AnySandbox = SandboxManager | DockerSandboxManager;
 
 /**
  * Extract transcript from Codex JSON output.
@@ -100,7 +105,7 @@ export function createCodexAgent({ useVercelAiGateway }: { useVercelAiGateway: b
 
     async run(fixturePath: string, options: AgentRunOptions): Promise<AgentRunResult> {
     const startTime = Date.now();
-    let sandbox: SandboxManager | null = null;
+    let sandbox: AnySandbox | null = null;
     let agentOutput = '';
     let aborted = false;
     let sandboxStopped = false;
@@ -141,8 +146,8 @@ export function createCodexAgent({ useVercelAiGateway }: { useVercelAiGateway: b
         };
       }
 
-      // Create sandbox
-      sandbox = await SandboxManager.create({
+      // Create sandbox (auto-detects backend based on env)
+      sandbox = await createSandbox({
         timeout: options.timeout,
         runtime: 'node24',
       });

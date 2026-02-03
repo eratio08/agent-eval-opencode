@@ -45,7 +45,13 @@ export {
 } from './lib/fixture.js';
 
 // Re-export sandbox utilities
-export type { SandboxOptions, CommandResult, SandboxFile } from './lib/sandbox.js';
+export type {
+  SandboxOptions,
+  CommandResult,
+  SandboxFile,
+  SandboxBackend,
+  SandboxBackendInfo,
+} from './lib/sandbox.js';
 export {
   SandboxManager,
   DEFAULT_SANDBOX_TIMEOUT,
@@ -54,7 +60,14 @@ export {
   collectLocalFiles,
   splitTestFiles,
   verifyNoTestFiles,
+  createSandbox,
+  resolveBackend,
+  getSandboxBackendInfo,
 } from './lib/sandbox.js';
+
+// Re-export Docker sandbox
+export type { DockerSandboxOptions } from './lib/docker-sandbox.js';
+export { DockerSandboxManager } from './lib/docker-sandbox.js';
 
 // Re-export agent utilities
 export type { AgentRunOptions, AgentRunResult } from './lib/agents/types.js';

@@ -14,24 +14,46 @@ import { initProject } from './lib/init.js';
 import { loadFixture, loadAllFixtures } from './lib/fixture.js';
 import { runSingleEval } from './lib/runner.js';
 import { loadConfig } from './lib/config.js';
+import { getSandboxBackendInfo } from './lib/sandbox.js';
 
 // Load .env file (try .env.local first, then .env)
 dotenvConfig({ path: '.env.local' });
 dotenvConfig();
 
 const TEST_DIR = '/tmp/eval-framework-integration-test';
-// AI Gateway credentials
-const hasAiGatewayCredentials =
-  process.env.AI_GATEWAY_API_KEY && (process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN);
-// Direct API credentials
-const hasAnthropicCredentials = process.env.ANTHROPIC_API_KEY && (process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN);
-const hasOpenAiCredentials = process.env.OPENAI_API_KEY && (process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN);
+
+// Check if Docker is available (for sandbox backend)
+function isDockerAvailableSync(): boolean {
+  try {
+    execSync('docker info', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Sandbox availability: either Vercel credentials OR Docker
+const hasVercelSandbox = !!(process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN);
+const hasDockerSandbox = isDockerAvailableSync();
+const hasSandbox = hasVercelSandbox || hasDockerSandbox;
+
+// AI Gateway credentials (need API key + sandbox)
+const hasAiGatewayCredentials = !!process.env.AI_GATEWAY_API_KEY && hasSandbox;
+// Direct API credentials (need API key + sandbox)
+const hasAnthropicCredentials = !!process.env.ANTHROPIC_API_KEY && hasSandbox;
+const hasOpenAiCredentials = !!process.env.OPENAI_API_KEY && hasSandbox;
 // OpenCode credentials (only supports AI Gateway)
 const hasOpenCodeCredentials = hasAiGatewayCredentials;
 
 describe.skipIf(!process.env.INTEGRATION_TEST)('integration tests', () => {
   beforeAll(() => {
     mkdirSync(TEST_DIR, { recursive: true });
+
+    // Log sandbox backend info
+    const sandboxInfo = getSandboxBackendInfo();
+    console.log(`\nSandbox backend: ${sandboxInfo.description}`);
+    console.log(`  Vercel available: ${hasVercelSandbox}`);
+    console.log(`  Docker available: ${hasDockerSandbox}\n`);
   });
 
   afterAll(() => {

@@ -1,16 +1,35 @@
 /**
- * Vercel Sandbox integration for isolated eval execution.
+ * Sandbox integration for isolated eval execution.
+ * Supports both Vercel Sandbox and Docker backends.
  */
 
 import { Sandbox as VercelSandbox } from '@vercel/sandbox';
 import type { Sandbox } from './types.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { DockerSandboxManager } from './docker-sandbox.js';
 
 /**
  * Default timeout for sandbox operations (10 minutes).
  */
 export const DEFAULT_SANDBOX_TIMEOUT = 600000;
+
+/**
+ * Supported sandbox backends.
+ */
+export type SandboxBackend = 'vercel' | 'docker';
+
+/**
+ * Information about the resolved sandbox backend.
+ */
+export interface SandboxBackendInfo {
+  /** Which backend will be used */
+  backend: SandboxBackend;
+  /** How it was determined */
+  reason: 'explicit' | 'auto-detected';
+  /** Human-readable description */
+  description: string;
+}
 
 /**
  * Files to ignore when copying to sandbox.
@@ -46,6 +65,8 @@ export interface SandboxOptions {
   timeout?: number;
   /** Runtime environment */
   runtime?: 'node20' | 'node24';
+  /** Sandbox backend to use. 'auto' will use Vercel if token present, else Docker. @default 'auto' */
+  backend?: SandboxBackend | 'auto';
 }
 
 /**
@@ -195,6 +216,100 @@ export class SandboxManager implements Sandbox {
 }
 
 /**
+ * Resolve which sandbox backend to use based on options and environment.
+ *
+ * Priority:
+ * 1. Explicit backend in options (if not 'auto')
+ * 2. SANDBOX_BACKEND environment variable
+ * 3. Auto-detect: Vercel if token present, else Docker
+ */
+export function resolveBackend(options?: SandboxOptions): SandboxBackend {
+  // Explicit backend in options
+  if (options?.backend && options.backend !== 'auto') {
+    return options.backend;
+  }
+
+  // Environment variable override
+  const envBackend = process.env.SANDBOX_BACKEND;
+  if (envBackend === 'vercel' || envBackend === 'docker') {
+    return envBackend;
+  }
+
+  // Auto-detect: Vercel if token present, else Docker
+  if (process.env.VERCEL_TOKEN || process.env.VERCEL_OIDC_TOKEN) {
+    return 'vercel';
+  }
+
+  return 'docker';
+}
+
+/**
+ * Get information about the sandbox backend that will be used.
+ * Useful for displaying to users.
+ */
+export function getSandboxBackendInfo(options?: SandboxOptions): SandboxBackendInfo {
+  const backend = resolveBackend(options);
+
+  // Determine the reason
+  let reason: 'explicit' | 'auto-detected';
+  let description: string;
+
+  const envBackend = process.env.SANDBOX_BACKEND;
+  const hasExplicitOption = options?.backend && options.backend !== 'auto';
+  const hasEnvVar = envBackend === 'vercel' || envBackend === 'docker';
+
+  if (hasExplicitOption || hasEnvVar) {
+    reason = 'explicit';
+    description = `${backend} (explicit)`;
+  } else {
+    reason = 'auto-detected';
+    if (backend === 'vercel') {
+      description = `${backend} (auto-detected: VERCEL_TOKEN found)`;
+    } else {
+      description = `${backend} (auto-detected: no VERCEL_TOKEN, using Docker)`;
+    }
+  }
+
+  return { backend, reason, description };
+}
+
+/**
+ * Create a sandbox using the appropriate backend.
+ *
+ * By default, uses Vercel Sandbox if VERCEL_TOKEN is present,
+ * otherwise falls back to Docker.
+ *
+ * @example
+ * ```typescript
+ * // Auto-detect backend
+ * const sandbox = await createSandbox();
+ *
+ * // Explicit Docker
+ * const sandbox = await createSandbox({ backend: 'docker' });
+ *
+ * // Explicit Vercel
+ * const sandbox = await createSandbox({ backend: 'vercel' });
+ * ```
+ */
+export async function createSandbox(
+  options: SandboxOptions = {}
+): Promise<SandboxManager | DockerSandboxManager> {
+  const backend = resolveBackend(options);
+
+  if (backend === 'docker') {
+    return DockerSandboxManager.create({
+      timeout: options.timeout,
+      runtime: options.runtime,
+    });
+  }
+
+  return SandboxManager.create({
+    timeout: options.timeout,
+    runtime: options.runtime,
+  });
+}
+
+/**
  * Collect files from a local directory for uploading to sandbox.
  */
 export async function collectLocalFiles(
@@ -311,7 +426,9 @@ export function splitTestFiles(files: SandboxFile[]): {
 /**
  * Verify that no test files exist in the sandbox.
  */
-export async function verifyNoTestFiles(sandbox: SandboxManager): Promise<void> {
+export async function verifyNoTestFiles(
+  sandbox: SandboxManager | DockerSandboxManager
+): Promise<void> {
   const result = await sandbox.runShell(
     "find . -path './node_modules' -prune -o \\( -name '*.test.tsx' -o -name '*.test.ts' -o -name 'EVAL.ts' \\) -print"
   );
