@@ -2,8 +2,7 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "build": "npm run build -w packages/playground && npm run build -w packages/agent-eval",
-    "build:playground": "npm run build -w packages/playground",
+    "build": "npm run build -w packages/agent-eval",
     "build:agent-eval": "npm run build -w packages/agent-eval",
     "test": "npm run test -w packages/agent-eval",
     "test:watch": "npm run test:watch -w packages/agent-eval",

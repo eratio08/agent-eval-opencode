@@ -116,7 +116,3 @@ export {
   parseCodexTranscript,
   parseOpenCodeTranscript,
 } from './lib/o11y/index.js';
-
-// Re-export playground utilities
-export type { PlaygroundServerOptions } from './lib/playground/server.js';
-export { startPlaygroundServer } from './lib/playground/server.js';
