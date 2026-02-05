@@ -1,72 +1,20 @@
 {
-  "name": "@vercel/agent-eval",
-  "version": "0.0.11",
-  "description": "Framework for testing AI coding agents in isolated sandboxes",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vercel-labs/agent-eval.git"
-  },
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "agent-eval": "dist/cli.js"
-  },
-  "files": [
-    "dist"
-  ],
+  "private": true,
+  "workspaces": ["packages/*"],
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:docker": "SANDBOX_BACKEND=docker vitest run src/lib/docker-sandbox.test.ts",
-    "test:integration": "INTEGRATION_TEST=1 vitest run src/integration.test.ts",
-    "test:integration:docker": "SANDBOX_BACKEND=docker INTEGRATION_TEST=1 vitest run src/integration.test.ts",
-    "test:integration:vercel": "SANDBOX_BACKEND=vercel INTEGRATION_TEST=1 vitest run src/integration.test.ts",
-    "lint": "eslint src/",
+    "build": "npm run build -w packages/playground && npm run build -w packages/agent-eval",
+    "build:playground": "npm run build -w packages/playground",
+    "build:agent-eval": "npm run build -w packages/agent-eval",
+    "test": "npm run test -w packages/agent-eval",
+    "test:watch": "npm run test:watch -w packages/agent-eval",
+    "test:integration": "npm run test:integration -w packages/agent-eval",
+    "lint": "npm run lint -w packages/agent-eval",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "npm run build && changeset publish",
-    "prepublishOnly": "npm run build"
-  },
-  "dependencies": {
-    "@ai-sdk/anthropic": "^1.2.12",
-    "@vercel/sandbox": "^1.2.0",
-    "ai": "^5.0.11",
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "dockerode": "^4.0.9",
-    "dotenv": "^16.4.5",
-    "glob": "^11.0.0",
-    "tar-stream": "^3.1.7",
-    "zod": "^3.23.8"
+    "release": "npm run build && npm run release -w packages/agent-eval"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.2",
-    "@changesets/cli": "^2.29.8",
-    "@types/dockerode": "^4.0.1",
-    "@types/node": "^22.0.0",
-    "@types/tar-stream": "^3.1.4",
-    "eslint": "^9.0.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5.6.0",
-    "typescript-eslint": "^8.54.0",
-    "vitest": "^2.1.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "ai",
-    "eval",
-    "testing",
-    "claude",
-    "agent",
-    "sandbox"
-  ],
-  "license": "MIT",
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "@changesets/cli": "^2.29.8"
   }
 }

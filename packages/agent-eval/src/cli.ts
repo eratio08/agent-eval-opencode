@@ -16,6 +16,7 @@ import { runExperiment } from './lib/runner.js';
 import { initProject, getPostInitInstructions } from './lib/init.js';
 import { getAgent } from './lib/agents/index.js';
 import { getSandboxBackendInfo } from './lib/sandbox.js';
+import { startPlaygroundServer } from './lib/playground/server.js';
 
 // Load environment variables (.env.local first, then .env as fallback)
 dotenvConfig({ path: '.env.local' });
@@ -205,6 +206,44 @@ program
 
       console.log(chalk.green('Project created successfully!'));
       console.log(getPostInitInstructions(projectDir, name));
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(chalk.red(`Error: ${error.message}`));
+      } else {
+        console.error(chalk.red('An unknown error occurred'));
+      }
+      process.exit(1);
+    }
+  });
+
+/**
+ * playground command - Launch the web-based results viewer
+ */
+program
+  .command('playground')
+  .description('Launch the web-based playground for browsing experiment results')
+  .option('--port <port>', 'HTTP server port', '3000')
+  .option('--results-dir <dir>', 'Path to results directory', './results')
+  .option('--evals-dir <dir>', 'Path to evals directory', './evals')
+  .option('--watch', 'Enable live mode — watch results directory for changes')
+  .action(async (options: { port: string; resultsDir: string; evalsDir: string; watch?: boolean }) => {
+    const port = parseInt(options.port, 10);
+    const resultsDir = resolve(process.cwd(), options.resultsDir);
+    const evalsDir = resolve(process.cwd(), options.evalsDir);
+
+    console.log(chalk.blue('Starting Agent Eval Playground...'));
+    console.log(chalk.gray(`  Results: ${resultsDir}`));
+    console.log(chalk.gray(`  Evals:   ${evalsDir}`));
+    if (options.watch) {
+      console.log(chalk.gray(`  Watch:   enabled`));
+    }
+
+    try {
+      startPlaygroundServer({ port, resultsDir, evalsDir, watch: options.watch });
+      console.log('');
+      console.log(chalk.green(`  Playground is running at http://localhost:${port}`));
+      console.log('');
+      console.log(chalk.gray('  Press Ctrl+C to stop'));
     } catch (error) {
       if (error instanceof Error) {
         console.error(chalk.red(`Error: ${error.message}`));

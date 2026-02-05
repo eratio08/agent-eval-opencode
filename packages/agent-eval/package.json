@@ -1,0 +1,70 @@
+{
+  "name": "@vercel/agent-eval",
+  "version": "0.0.11",
+  "description": "Framework for testing AI coding agents in isolated sandboxes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vercel-labs/agent-eval.git"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "agent-eval": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && cp -r ../playground/out dist/playground",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:docker": "SANDBOX_BACKEND=docker vitest run src/lib/docker-sandbox.test.ts",
+    "test:integration": "INTEGRATION_TEST=1 vitest run src/integration.test.ts",
+    "test:integration:docker": "SANDBOX_BACKEND=docker INTEGRATION_TEST=1 vitest run src/integration.test.ts",
+    "test:integration:vercel": "SANDBOX_BACKEND=vercel INTEGRATION_TEST=1 vitest run src/integration.test.ts",
+    "lint": "eslint src/",
+    "release": "changeset publish",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.12",
+    "@vercel/sandbox": "^1.2.0",
+    "ai": "^5.0.11",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dockerode": "^4.0.9",
+    "dotenv": "^16.4.5",
+    "glob": "^11.0.0",
+    "serve-handler": "^6.1.6",
+    "tar-stream": "^3.1.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^4.0.1",
+    "@types/node": "^22.0.0",
+    "@types/serve-handler": "^6.1.4",
+    "@types/tar-stream": "^3.1.4",
+    "eslint": "^9.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ai",
+    "eval",
+    "testing",
+    "claude",
+    "agent",
+    "sandbox"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
