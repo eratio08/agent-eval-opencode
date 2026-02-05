@@ -3,8 +3,16 @@ import { listExperiments } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export default async function ExperimentsPage() {
-  const experiments = listExperiments();
+const LIMIT = 20;
+
+export default async function ExperimentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ all?: string }>;
+}) {
+  const { all } = await searchParams;
+  const showAll = all !== undefined;
+  const { items: experiments, total } = listExperiments(showAll ? undefined : LIMIT);
 
   return (
     <div className="space-y-6">
@@ -14,7 +22,7 @@ export default async function ExperimentsPage() {
           Browse and inspect your agent evaluation results.
         </p>
       </div>
-      <ExperimentList experiments={experiments} />
+      <ExperimentList experiments={experiments} total={total} showAll={showAll} />
     </div>
   );
 }

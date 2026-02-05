@@ -6,11 +6,10 @@ import { Badge } from "@/components/ui/badge";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const experiments = listExperiments();
-  const evals = listEvals();
+  const { items: experiments, total: totalExperiments } = listExperiments(6);
+  const { items: evals, total: totalEvals } = listEvals(6);
 
   const totalRuns = experiments.reduce((sum, e) => sum + e.timestamps.length, 0);
-  const totalEvals = evals.length;
 
   // Compute aggregate pass rate across all latest experiment runs
   const totalPassed = experiments.reduce((sum, e) => sum + (e.latestPassedRuns ?? 0), 0);
@@ -32,7 +31,7 @@ export default async function HomePage() {
         <Card>
           <CardContent className="py-4 px-4">
             <div className="text-xs text-muted-foreground">Experiments</div>
-            <div className="text-2xl font-bold mt-1">{experiments.length}</div>
+            <div className="text-2xl font-bold mt-1">{totalExperiments}</div>
           </CardContent>
         </Card>
         <Card>

@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { ChevronRight, Terminal, FileText, Brain, AlertCircle, MessageSquare, Wrench } from "lucide-react";
 import type { TranscriptEvent, Transcript } from "@/lib/types";
 import { O11ySummary } from "./O11ySummary";
+import { ShowMore } from "./ShowMore";
 
 interface TranscriptViewerProps {
   transcript: Transcript;
@@ -48,7 +49,7 @@ function TranscriptEventCard({ event, index }: { event: TranscriptEvent; index: 
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card size="sm" className="border-l-4 overflow-hidden !py-0 !gap-0" style={{ borderLeftColor: getEventColor(event.type) }}>
+      <Card size="sm" className="border-l-4 overflow-hidden py-0! gap-0!" style={{ borderLeftColor: getEventColor(event.type) }}>
         <CollapsibleTrigger className="w-full text-left cursor-pointer transition-colors hover:bg-muted rounded-t-lg" disabled={!hasExpandableContent}>
           <div className="flex items-center gap-2 min-w-0 px-4 py-3">
               <span className="text-xs text-muted-foreground w-5 text-right font-mono shrink-0">
@@ -172,18 +173,19 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
           <O11ySummary summary={transcript.summary} />
 
           {/* Timeline */}
-          <div className="space-y-2">
-            {transcript.events.map((event, i) => (
-              <TranscriptEventCard key={i} event={event} index={i} />
-            ))}
-            {transcript.events.length === 0 && (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  No transcript events found.
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {transcript.events.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No transcript events found.
+              </CardContent>
+            </Card>
+          ) : (
+            <ShowMore limit={50} className="space-y-2">
+              {transcript.events.map((event, i) => (
+                <TranscriptEventCard key={i} event={event} index={i} />
+              ))}
+            </ShowMore>
+          )}
         </div>
       </TabsContent>
 

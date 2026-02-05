@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ShowMore } from "@/components/ShowMore";
 
 interface EvalInfo {
   name: string;
@@ -10,9 +11,11 @@ interface EvalInfo {
 
 interface EvalsPageProps {
   evals: EvalInfo[];
+  total: number;
+  showAll: boolean;
 }
 
-export function EvalsPage({ evals }: EvalsPageProps) {
+export function EvalsPage({ evals, total, showAll }: EvalsPageProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -36,7 +39,7 @@ export function EvalsPage({ evals }: EvalsPageProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ShowMore total={total} showAllHref={showAll ? undefined : "/evals?all"} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {evals.map((evalInfo) => (
             <Link key={evalInfo.name} href={`/evals/${encodeURIComponent(evalInfo.name)}`} className="block cursor-pointer">
             <Card className="transition-colors hover:bg-muted">
@@ -70,7 +73,7 @@ export function EvalsPage({ evals }: EvalsPageProps) {
             </Card>
             </Link>
           ))}
-        </div>
+        </ShowMore>
       )}
     </div>
   );

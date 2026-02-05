@@ -7,3 +7,4 @@
 - Always use `next/link` `<Link>` for internal navigation — never use raw `<a>` tags for internal routes. This enables client-side transitions and prefetching.
 - Prefer Server Components by default. Only add `"use client"` when the component needs interactivity (state, effects, event handlers).
 - Never use `useRouter().push()` for navigation when a `<Link>` would suffice.
+- Cap long lists with `<ShowMore>` (default 20 items). Never render unbounded lists — use `<ShowMore limit={N}>` to render the first N items with a "Show all" button for the rest.

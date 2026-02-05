@@ -15,19 +15,22 @@ function getEvalsDir(): string {
   return resolve(process.env.EVALS_DIR || "./evals");
 }
 
-/** List all experiments from the results directory */
-export function listExperiments() {
+/** List experiments from the results directory. Pass limit to cap expensive per-item reads. */
+export function listExperiments(limit?: number) {
   const resultsDir = getResultsDir();
 
   if (!existsSync(resultsDir)) {
-    return [];
+    return { items: [], total: 0 };
   }
 
   const entries = readdirSync(resultsDir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name);
 
-  return entries.map((name) => {
+  const total = entries.length;
+  const toProcess = limit ? entries.slice(0, limit) : entries;
+
+  const items = toProcess.map((name) => {
     const expDir = join(resultsDir, name);
     const timestamps = readdirSync(expDir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
@@ -72,6 +75,8 @@ export function listExperiments() {
       latestPassedRuns,
     };
   });
+
+  return { items, total };
 }
 
 /** Get timestamps for a specific experiment */
@@ -211,19 +216,22 @@ export function getTranscript(
   }
 }
 
-/** List all evals from the evals directory */
-export function listEvals() {
+/** List evals from the evals directory. Pass limit to cap per-item reads. */
+export function listEvals(limit?: number) {
   const evalsDir = getEvalsDir();
 
   if (!existsSync(evalsDir)) {
-    return [];
+    return { items: [], total: 0 };
   }
 
   const entries = readdirSync(evalsDir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name);
 
-  return entries.map((name) => {
+  const total = entries.length;
+  const toProcess = limit ? entries.slice(0, limit) : entries;
+
+  const items = toProcess.map((name) => {
     const evalDir = join(evalsDir, name);
     const promptPath = join(evalDir, "PROMPT.md");
     let prompt = "";
@@ -237,6 +245,8 @@ export function listEvals() {
 
     return { name, prompt, files };
   });
+
+  return { items, total };
 }
 
 /** Get detail for a specific eval */

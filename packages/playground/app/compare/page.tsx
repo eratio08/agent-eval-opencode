@@ -15,7 +15,7 @@ function formatTimestamp(ts: string): string {
 }
 
 export default async function CompareRoute() {
-  const experiments = listExperiments();
+  const { items: experiments } = listExperiments();
 
   // Build options and details map server-side to avoid hydration mismatch
   // (toLocaleString differs between Node.js and browser)
