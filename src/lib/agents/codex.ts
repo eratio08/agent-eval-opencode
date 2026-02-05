@@ -49,12 +49,11 @@ function extractTranscriptFromOutput(output: string): string | undefined {
 
 /**
  * Generate Codex config.toml content.
- * For direct mode, we embed the API key directly since env_key doesn't work reliably in the sandbox.
  */
-function generateCodexConfig(model: string, useVercelAiGateway: boolean, apiKey?: string): string {
-  const fullModel = model.includes('/') ? model : `openai/${model}`;
-
+function generateCodexConfig(model: string, useVercelAiGateway: boolean): string {
   if (useVercelAiGateway) {
+    // AI Gateway uses prefixed model names like "openai/gpt-5.2-codex"
+    const fullModel = model.includes('/') ? model : `openai/${model}`;
     return `# Codex configuration for Vercel AI Gateway
 profile = "default"
 
@@ -62,27 +61,27 @@ profile = "default"
 name = "Vercel AI Gateway"
 base_url = "${AI_GATEWAY.openAiBaseUrl}"
 env_key = "${AI_GATEWAY.apiKeyEnvVar}"
-wire_api = "chat"
+wire_api = "responses"
 
 [profiles.default]
 model_provider = "vercel"
 model = "${fullModel}"
 `;
   } else {
-    // For direct mode, embed the API key directly in config
-    // This is safe because the sandbox is ephemeral and isolated
+    // Direct OpenAI API uses unprefixed model names like "gpt-5.2-codex"
+    const directModel = model.includes('/') ? model.split('/').pop()! : model;
     return `# Direct OpenAI API configuration
 profile = "default"
 
 [model_providers.openai]
 name = "OpenAI"
 base_url = "${OPENAI_DIRECT.baseUrl}"
-api_key = "${apiKey}"
-wire_api = "chat"
+env_key = "${OPENAI_DIRECT.apiKeyEnvVar}"
+wire_api = "responses"
 
 [profiles.default]
 model_provider = "openai"
-model = "${fullModel}"
+model = "${directModel}"
 `;
   }
 }
@@ -190,11 +189,7 @@ export function createCodexAgent({ useVercelAiGateway }: { useVercelAiGateway: b
 
       // Create Codex config directory and config file
       await sandbox.runShell('mkdir -p ~/.codex');
-      const configContent = generateCodexConfig(
-        options.model,
-        useVercelAiGateway,
-        useVercelAiGateway ? undefined : options.apiKey
-      );
+      const configContent = generateCodexConfig(options.model, useVercelAiGateway);
       await sandbox.runShell(`cat > ~/.codex/config.toml << 'EOF'
 ${configContent}
 EOF`);
@@ -206,24 +201,10 @@ EOF`);
       // Use --dangerously-bypass-approvals-and-sandbox since Vercel sandbox provides isolation
       // Use --json for structured output and --skip-git-repo-check since sandbox is not a git repo
       // Model is configured in config.toml, so we don't pass --model here
-      const codexResult = await sandbox.runCommand(
-        'codex',
-        [
-          'exec',
-          '--dangerously-bypass-approvals-and-sandbox',
-          '--json',
-          '--skip-git-repo-check',
-          options.prompt,
-        ],
-        {
-          env: useVercelAiGateway
-            ? {
-                [AI_GATEWAY.apiKeyEnvVar]: options.apiKey,
-              }
-            : {
-                [OPENAI_DIRECT.apiKeyEnvVar]: options.apiKey,
-              },
-        }
+      // First login with API key, then run exec
+      const envVarToSet = useVercelAiGateway ? AI_GATEWAY.apiKeyEnvVar : OPENAI_DIRECT.apiKeyEnvVar;
+      const codexResult = await sandbox.runShell(
+        `echo '${options.apiKey}' | codex login --with-api-key && export ${envVarToSet}='${options.apiKey}' && codex exec --dangerously-bypass-approvals-and-sandbox --json --skip-git-repo-check '${options.prompt.replace(/'/g, "'\\''")}'`
       );
 
       agentOutput = codexResult.stdout + codexResult.stderr;
