@@ -48,10 +48,9 @@ function TranscriptEventCard({ event, index }: { event: TranscriptEvent; index: 
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card size="sm" className="border-l-4 overflow-hidden" style={{ borderLeftColor: getEventColor(event.type) }}>
+      <Card size="sm" className="border-l-4 overflow-hidden !py-0 !gap-0" style={{ borderLeftColor: getEventColor(event.type) }}>
         <CollapsibleTrigger className="w-full text-left cursor-pointer transition-colors hover:bg-muted rounded-t-lg" disabled={!hasExpandableContent}>
-          <CardContent className="py-0 px-4">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 px-4 py-3">
               <span className="text-xs text-muted-foreground w-5 text-right font-mono shrink-0">
                 {index + 1}
               </span>
@@ -81,11 +80,10 @@ function TranscriptEventCard({ event, index }: { event: TranscriptEvent; index: 
                   }`}
                 />
               )}
-            </div>
-          </CardContent>
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="px-4 pb-0 space-y-2">
+          <div className="px-4 pb-3 space-y-2">
             <Separator />
             {event.content && (
               <pre className="text-xs font-mono bg-muted rounded p-3 overflow-x-auto whitespace-pre-wrap max-h-96 overflow-y-auto">
@@ -139,7 +137,6 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
     <Tabs defaultValue="timeline" className="w-full">
       <TabsList>
         <TabsTrigger value="timeline">Timeline</TabsTrigger>
-        <TabsTrigger value="summary">Summary</TabsTrigger>
         <TabsTrigger value="raw">Raw JSON</TabsTrigger>
       </TabsList>
 
@@ -188,10 +185,6 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
             )}
           </div>
         </div>
-      </TabsContent>
-
-      <TabsContent value="summary" className="mt-4">
-        <O11ySummary summary={transcript.summary} />
       </TabsContent>
 
       <TabsContent value="raw" className="mt-4">

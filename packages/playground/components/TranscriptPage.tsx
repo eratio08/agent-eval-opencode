@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { TranscriptViewer } from "@/components/TranscriptViewer";
 import type { Transcript } from "@/lib/types";
@@ -21,30 +22,23 @@ export function TranscriptPage({
     <div className="space-y-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <a href="/experiments" className="hover:underline underline-offset-4">
+        <Link href="/experiments" className="cursor-pointer hover:underline underline-offset-4">
           Experiments
-        </a>
+        </Link>
         <span>/</span>
-        <a
+        <Link
           href={`/experiments/${encodeURIComponent(experiment)}/${encodeURIComponent(timestamp)}`}
-          className="hover:underline underline-offset-4"
+          className="cursor-pointer hover:underline underline-offset-4"
         >
           {experiment}
-        </a>
+        </Link>
         <span>/</span>
         <span>{evalName}</span>
         <span>/</span>
         <span>{run}</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Transcript</h1>
-        <p className="text-muted-foreground mt-1">
-          {evalName} &mdash; {run} &mdash;{" "}
-          {transcript.agent}
-          {transcript.model ? ` / ${transcript.model}` : ""}
-        </p>
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight">Transcript</h1>
 
       <TranscriptViewer transcript={transcript} />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,13 +19,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { getExperimentDetail } from "@/lib/api-client";
-
-interface ExperimentInfo {
-  name: string;
-  timestamps: string[];
-  latestTimestamp: string | null;
-}
 
 interface EvalDetail {
   name: string;
@@ -41,64 +34,28 @@ interface ExperimentDetailData {
   evals: EvalDetail[];
 }
 
-interface CompareSelection {
-  experiment: string;
-  timestamp: string;
+interface SelectOption {
+  value: string;
+  label: string;
 }
 
 interface ComparePageProps {
-  experiments: ExperimentInfo[];
+  options: SelectOption[];
+  detailsMap: Record<string, ExperimentDetailData | null>;
 }
 
-export function ComparePage({ experiments }: ComparePageProps) {
-  // Build the options list: "experiment / timestamp"
-  const options = experiments.flatMap((exp) =>
-    exp.timestamps.map((ts) => ({
-      value: `${exp.name}|||${ts}`,
-      label: `${exp.name} / ${formatTimestamp(ts)}`,
-      experiment: exp.name,
-      timestamp: ts,
-    }))
-  );
+export function ComparePage({ options, detailsMap }: ComparePageProps) {
 
   // Pre-select the two most recent runs if available
-  const defaultLeft = options.length >= 2
-    ? { experiment: options[0].experiment, timestamp: options[0].timestamp }
-    : options.length >= 1
-      ? { experiment: options[0].experiment, timestamp: options[0].timestamp }
-      : null;
-  const defaultRight = options.length >= 2
-    ? { experiment: options[1].experiment, timestamp: options[1].timestamp }
-    : null;
+  const defaultLeft = options.length >= 1 ? options[0].value : "";
+  const defaultRight = options.length >= 2 ? options[1].value : "";
 
-  const [leftSelection, setLeftSelection] = useState<CompareSelection | null>(defaultLeft);
-  const [rightSelection, setRightSelection] = useState<CompareSelection | null>(defaultRight);
+  const [leftValue, setLeftValue] = useState(defaultLeft);
+  const [rightValue, setRightValue] = useState(defaultRight);
 
-  const [leftData, setLeftData] = useState<ExperimentDetailData | null>(null);
-  const [rightData, setRightData] = useState<ExperimentDetailData | null>(null);
-
-  const loadSide = useCallback(
-    async (
-      sel: CompareSelection,
-      setter: (d: ExperimentDetailData | null) => void
-    ) => {
-      try {
-        const detail = await getExperimentDetail(sel.experiment, sel.timestamp);
-        setter(detail as unknown as ExperimentDetailData);
-      } catch {
-        setter(null);
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (leftSelection) loadSide(leftSelection, setLeftData);
-  }, [leftSelection, loadSide]);
-
-  useEffect(() => {
-    if (rightSelection) loadSide(rightSelection, setRightData);
-  }, [rightSelection, loadSide]);
+  // Look up detail data directly from the pre-loaded map
+  const leftData = leftValue ? (detailsMap[leftValue] ?? null) : null;
+  const rightData = rightValue ? (detailsMap[rightValue] ?? null) : null;
 
   // Merge eval names from both sides
   const allEvalNames = new Set<string>();
@@ -128,15 +85,8 @@ export function ComparePage({ experiments }: ComparePageProps) {
           </CardHeader>
           <CardContent>
             <Select
-              value={leftSelection ? `${leftSelection.experiment}|||${leftSelection.timestamp}` : undefined}
-              onValueChange={(v) => {
-                const opt = options.find((o) => o.value === v);
-                if (opt)
-                  setLeftSelection({
-                    experiment: opt.experiment,
-                    timestamp: opt.timestamp,
-                  });
-              }}
+              value={leftValue || undefined}
+              onValueChange={setLeftValue}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select experiment run..." />
@@ -160,15 +110,8 @@ export function ComparePage({ experiments }: ComparePageProps) {
           </CardHeader>
           <CardContent>
             <Select
-              value={rightSelection ? `${rightSelection.experiment}|||${rightSelection.timestamp}` : undefined}
-              onValueChange={(v) => {
-                const opt = options.find((o) => o.value === v);
-                if (opt)
-                  setRightSelection({
-                    experiment: opt.experiment,
-                    timestamp: opt.timestamp,
-                  });
-              }}
+              value={rightValue || undefined}
+              onValueChange={setRightValue}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select experiment run..." />
@@ -367,13 +310,3 @@ function avgDuration(evals: EvalDetail[]): number {
   return evals.reduce((s, e) => s + e.meanDuration, 0) / evals.length;
 }
 
-function formatTimestamp(ts: string): string {
-  try {
-    const isoString = ts.replace(/T(\d{2})-(\d{2})-(\d{2})/, "T$1:$2:$3");
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return ts;
-    return date.toLocaleString();
-  } catch {
-    return ts;
-  }
-}

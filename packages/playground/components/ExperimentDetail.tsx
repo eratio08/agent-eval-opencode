@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -47,9 +48,9 @@ export function ExperimentDetail({ data }: ExperimentDetailProps) {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-          <a href="/experiments" className="hover:underline underline-offset-4">
+          <Link href="/experiments" className="cursor-pointer hover:underline underline-offset-4">
             Experiments
-          </a>
+          </Link>
           <span>/</span>
           <span>{data.name}</span>
           <span>/</span>

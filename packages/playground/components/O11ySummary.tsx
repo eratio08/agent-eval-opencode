@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import type { TranscriptSummary, ToolName } from "@/lib/types";
 

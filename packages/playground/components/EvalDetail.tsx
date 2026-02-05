@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,9 +23,9 @@ export function EvalDetail({ data }: EvalDetailProps) {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <a href="/evals" className="hover:underline underline-offset-4">
+        <Link href="/evals" className="cursor-pointer hover:underline underline-offset-4">
           Evals
-        </a>
+        </Link>
         <span>/</span>
         <span>{data.name}</span>
       </div>
