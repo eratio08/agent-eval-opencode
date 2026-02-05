@@ -1,5 +1,11 @@
 # @vercel/agent-eval
 
+## 0.0.11
+
+### Patch Changes
+
+- [`558abe5`](https://github.com/vercel-labs/agent-eval/commit/558abe59602b05e1c353fd5cd64ee5437de4b8a3) Thanks [@paoloricciuti](https://github.com/paoloricciuti)! - feat: accept array of models in experiment #10
+
 ## 0.0.10
 
 ### Patch Changes
