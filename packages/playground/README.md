@@ -1,6 +1,6 @@
 # @vercel/agent-eval-playground
 
-A web-based dashboard for browsing agent-eval experiment results. Ships as a standalone Next.js app — no build step required.
+A web-based dashboard for browsing agent-eval experiment results. Ships as a standalone Next.js app
 
 ## Usage
 
