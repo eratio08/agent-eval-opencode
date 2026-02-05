@@ -14,7 +14,7 @@ function formatTimestamp(ts: string): string {
   }
 }
 
-export default function CompareRoute() {
+export default async function CompareRoute() {
   const experiments = listExperiments();
 
   // Build options and details map server-side to avoid hydration mismatch

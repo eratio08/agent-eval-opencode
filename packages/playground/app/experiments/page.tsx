@@ -3,7 +3,7 @@ import { listExperiments } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export default function ExperimentsPage() {
+export default async function ExperimentsPage() {
   const experiments = listExperiments();
 
   return (

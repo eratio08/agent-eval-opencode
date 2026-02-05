@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+export default async function HomePage() {
   const experiments = listExperiments();
   const evals = listEvals();
 

@@ -3,7 +3,7 @@ import { listEvals } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export default function EvalsRoute() {
+export default async function EvalsRoute() {
   const evals = listEvals();
   return <EvalsPage evals={evals} />;
 }
