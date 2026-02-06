@@ -102,4 +102,49 @@ describe('resolveEvalNames', () => {
       'Eval "non-existent" not found'
     );
   });
+
+  it('supports glob patterns for nested directories', () => {
+    const nestedEvals = [
+      'vercel-cli/deploy',
+      'vercel-cli/link',
+      'vercel-cli/env',
+      'flags/create',
+      'flags/update',
+      'analytics/track',
+    ];
+
+    // Match all vercel-cli evals
+    expect(resolveEvalNames('vercel-cli/*', nestedEvals)).toEqual([
+      'vercel-cli/deploy',
+      'vercel-cli/link',
+      'vercel-cli/env',
+    ]);
+
+    // Match all flags evals
+    expect(resolveEvalNames('flags/*', nestedEvals)).toEqual(['flags/create', 'flags/update']);
+
+    // Match specific nested eval
+    expect(resolveEvalNames('vercel-cli/deploy', nestedEvals)).toEqual(['vercel-cli/deploy']);
+
+    // Match all deploy evals across folders
+    expect(resolveEvalNames('*/deploy', nestedEvals)).toEqual(['vercel-cli/deploy']);
+  });
+
+  it('supports glob patterns in arrays', () => {
+    const nestedEvals = [
+      'vercel-cli/deploy',
+      'vercel-cli/link',
+      'flags/create',
+      'analytics/track',
+    ];
+
+    const result = resolveEvalNames(['vercel-cli/*', 'analytics/*'], nestedEvals);
+    expect(result).toEqual(['vercel-cli/deploy', 'vercel-cli/link', 'analytics/track']);
+  });
+
+  it('throws when glob pattern matches nothing', () => {
+    expect(() => resolveEvalNames('nonexistent/*', availableEvals)).toThrow(
+      'No evals matched pattern "nonexistent/*"'
+    );
+  });
 });
