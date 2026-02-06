@@ -16,6 +16,7 @@ import { runExperiment } from './lib/runner.js';
 import { initProject, getPostInitInstructions } from './lib/init.js';
 import { getAgent } from './lib/agents/index.js';
 import { getSandboxBackendInfo } from './lib/sandbox.js';
+import { spawnSync } from 'child_process';
 
 // Load environment variables (.env.local first, then .env as fallback)
 dotenvConfig({ path: '.env.local' });
@@ -213,6 +214,43 @@ program
       }
       process.exit(1);
     }
+  });
+
+/**
+ * playground command - Launch the web-based results viewer
+ * Spawns @vercel/agent-eval-playground (downloaded on-demand via npx if not installed)
+ */
+program
+  .command('playground')
+  .description('Launch the web-based playground for browsing experiment results')
+  .option('--port <port>', 'HTTP server port', '3000')
+  .option('--results-dir <dir>', 'Path to results directory', './results')
+  .option('--evals-dir <dir>', 'Path to evals directory', './evals')
+  .option('--watch', 'Enable live mode — watch results directory for changes')
+  .action(async (options: { port: string; resultsDir: string; evalsDir: string; watch?: boolean }) => {
+    const resultsDir = resolve(process.cwd(), options.resultsDir);
+    const evalsDir = resolve(process.cwd(), options.evalsDir);
+
+    console.log(chalk.blue('Starting Agent Eval Playground...'));
+
+    // Build args for the playground CLI
+    const playgroundArgs = [
+      '--results-dir', resultsDir,
+      '--evals-dir', evalsDir,
+      '--port', options.port,
+    ];
+    if (options.watch) {
+      playgroundArgs.push('--watch');
+    }
+
+    // Try to run the playground package directly, fall back to npx
+    const result = spawnSync(
+      'npx',
+      ['@vercel/agent-eval-playground', ...playgroundArgs],
+      { stdio: 'inherit', cwd: process.cwd() }
+    );
+
+    process.exit(result.status ?? 1);
   });
 
 /**

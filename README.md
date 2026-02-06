@@ -351,6 +351,25 @@ results/
           outputs/          # Test/script output
 ```
 
+### Playground UI
+
+Browse results in a web-based dashboard:
+
+```bash
+npx @vercel/agent-eval-playground
+```
+
+This opens a local Next.js app with:
+- **Overview** dashboard with stats and recent experiments
+- **Experiment detail** with per-eval pass rates and run results
+- **Transcript viewer** to inspect agent tool calls, thinking, and errors
+- **Compare** two runs side-by-side with pass rate deltas
+
+Options:
+```bash
+npx @vercel/agent-eval-playground --results-dir ./results --evals-dir ./evals --port 3001
+```
+
 ### Analyzing Results
 
 ```bash
