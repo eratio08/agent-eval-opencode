@@ -303,7 +303,7 @@ const config: ExperimentConfig = {
   // Optional hook to rewrite the prompt before running.
   // Useful for appending instructions like "use the skill"
   // or wrapping the prompt in an MCP template.
-  editPrompt: (prompt) => `Use the skill.\n\n${prompt}`,
+  editPrompt: (prompt: string) => `Use the skill.\n\n${prompt}`,
 };
 
 export default config;
