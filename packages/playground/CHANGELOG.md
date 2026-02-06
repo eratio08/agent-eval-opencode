@@ -1,5 +1,11 @@
 # @vercel/agent-eval-playground
 
+## 0.0.4
+
+### Patch Changes
+
+- [`23e2d43`](https://github.com/vercel-labs/agent-eval/commit/23e2d439e6cead7939633dcf753c5c8f29f7892a) Thanks [@allenzhou101](https://github.com/allenzhou101)! - Add repository field to package.json to fix npm provenance verification error during publishing.
+
 ## 0.0.3
 
 ### Patch Changes
