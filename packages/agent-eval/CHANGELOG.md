@@ -1,5 +1,11 @@
 # @vercel/agent-eval
 
+## 0.0.13
+
+### Patch Changes
+
+- [#21](https://github.com/vercel-labs/agent-eval/pull/21) [`5764ca9`](https://github.com/vercel-labs/agent-eval/commit/5764ca9ec4d3048943d99794052fd87e36e8eeb4) Thanks [@allenzhou101](https://github.com/allenzhou101)! - Fix TypeScript config file loading by adding jiti support. Previously, running `npx @vercel/agent-eval <experiment>` with a TypeScript config file would fail with "Unknown file extension .ts" error. The CLI now properly loads both .ts and .js config files.
+
 ## 0.0.12
 
 ### Patch Changes
