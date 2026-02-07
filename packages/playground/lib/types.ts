@@ -61,6 +61,7 @@ export interface EvalRunResult {
   status: "passed" | "failed";
   error?: string;
   duration: number;
+  model?: string;
   transcriptPath?: string;
   transcriptRawPath?: string;
   outputPaths?: {
