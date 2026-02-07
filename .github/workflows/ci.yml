@@ -55,5 +55,8 @@ jobs:
       - name: Install optional dependencies
         run: npm install --no-save --prefer-offline @rollup/rollup-linux-x64-gnu || true
 
+      - name: Build
+        run: npm run build
+
       - name: Run tests
         run: npm run test
