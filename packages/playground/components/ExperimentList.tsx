@@ -46,18 +46,31 @@ export function ExperimentList({ experiments, total, showAll }: ExperimentListPr
           {/* Rows */}
           <ShowMore total={total} showAllHref={showAll ? undefined : "/experiments?all"}>
             {experiments.map((exp) => (
-              <Link
+              <div
                 key={exp.name}
-                href={
-                  exp.latestTimestamp
-                    ? `/experiments/${encodeURIComponent(exp.name)}/${encodeURIComponent(exp.latestTimestamp)}`
-                    : "#"
-                }
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted rounded-md"
+                className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-3 py-2.5 transition-colors hover:bg-muted rounded-md"
               >
-                <span className="font-medium truncate">{exp.name}</span>
-                <span className="w-12 text-right text-muted-foreground">{exp.timestamps.length}</span>
-                <span className="w-24">
+                <Link
+                  href={`/experiments/${encodeURIComponent(exp.name)}`}
+                  className="font-medium truncate hover:underline"
+                >
+                  {exp.name}
+                </Link>
+                <Link
+                  href={`/experiments/${encodeURIComponent(exp.name)}`}
+                  className="w-12 text-right text-muted-foreground hover:text-foreground hover:underline"
+                  title="View all runs"
+                >
+                  {exp.timestamps.length}
+                </Link>
+                <Link
+                  href={
+                    exp.latestTimestamp
+                      ? `/experiments/${encodeURIComponent(exp.name)}/${encodeURIComponent(exp.latestTimestamp)}`
+                      : "#"
+                  }
+                  className="w-24 block"
+                >
                   {exp.latestPassRate !== undefined ? (
                     <span className="flex items-center gap-2">
                       <Badge
@@ -78,11 +91,18 @@ export function ExperimentList({ experiments, total, showAll }: ExperimentListPr
                   ) : (
                     <span className="text-muted-foreground">--</span>
                   )}
-                </span>
-                <span className="w-44 text-xs text-muted-foreground">
+                </Link>
+                <Link
+                  href={
+                    exp.latestTimestamp
+                      ? `/experiments/${encodeURIComponent(exp.name)}/${encodeURIComponent(exp.latestTimestamp)}`
+                      : "#"
+                  }
+                  className="w-44 text-xs text-muted-foreground hover:text-foreground"
+                >
                   {exp.latestTimestamp ? formatTimestamp(exp.latestTimestamp) : "--"}
-                </span>
-              </Link>
+                </Link>
+              </div>
             ))}
           </ShowMore>
         </div>
