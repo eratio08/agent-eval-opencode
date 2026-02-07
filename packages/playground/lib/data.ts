@@ -15,6 +15,11 @@ function getEvalsDir(): string {
   return resolve(process.env.EVALS_DIR || "./evals");
 }
 
+/** Check if a directory name looks like an ISO timestamp (used as run ID) */
+function isTimestamp(name: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T/.test(name);
+}
+
 /** List experiments from the results directory. Pass limit to cap expensive per-item reads. */
 export function listExperiments(limit?: number) {
   const resultsDir = getResultsDir();
@@ -23,9 +28,29 @@ export function listExperiments(limit?: number) {
     return { items: [], total: 0 };
   }
 
-  const entries = readdirSync(resultsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name);
+  // Discover experiments by walking the directory tree until we find
+  // timestamp directories. The path from resultsDir to the parent of the
+  // first timestamp is the experiment name (e.g. "my-config/openai/gpt-5.2-codex").
+  const entries: string[] = [];
+
+  function walk(dir: string, prefix: string) {
+    const children = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+
+    // If any child looks like a timestamp, this directory is an experiment
+    if (children.some(isTimestamp)) {
+      entries.push(prefix);
+      return;
+    }
+
+    // Otherwise keep recursing
+    for (const child of children) {
+      walk(join(dir, child), prefix ? `${prefix}/${child}` : child);
+    }
+  }
+
+  walk(resultsDir, "");
 
   const total = entries.length;
   const toProcess = limit ? entries.slice(0, limit) : entries;
@@ -33,7 +58,7 @@ export function listExperiments(limit?: number) {
   const items = toProcess.map((name) => {
     const expDir = join(resultsDir, name);
     const timestamps = readdirSync(expDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
+      .filter((e) => e.isDirectory() && isTimestamp(e.name))
       .map((e) => e.name)
       .sort()
       .reverse();
