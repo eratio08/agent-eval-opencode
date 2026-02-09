@@ -268,7 +268,7 @@ function parseCodexLine(line: string): TranscriptEvent[] {
                     output: item.aggregated_output || item.output,
                     exitCode: item.exit_code,
                   },
-                  success: item.status === 'completed' || item.exit_code === 0,
+                  success: item.status === 'completed' && (item.exit_code === 0 || item.exit_code === undefined),
                 },
                 raw: data,
               });
