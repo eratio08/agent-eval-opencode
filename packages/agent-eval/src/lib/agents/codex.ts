@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   AI_GATEWAY,
   OPENAI_DIRECT,
+  initGitAndCommit,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -190,6 +191,8 @@ export function createCodexAgent({ useVercelAiGateway }: { useVercelAiGateway: b
 
       // Upload workspace files (excluding tests)
       await sandbox.uploadFiles(workspaceFiles);
+	  
+	  await initGitAndCommit(sandbox);
 
       // Run setup function if provided
       if (options.setup) {

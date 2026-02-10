@@ -18,6 +18,7 @@ import {
   captureGeneratedFiles,
   createVitestConfig,
   AI_GATEWAY,
+  initGitAndCommit,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -148,6 +149,8 @@ export function createOpenCodeAgent(): Agent {
 
         // Upload workspace files (excluding tests)
         await sandbox.uploadFiles(workspaceFiles);
+
+		await initGitAndCommit(sandbox);
 
         // Run setup function if provided
         if (options.setup) {

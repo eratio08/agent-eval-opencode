@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   AI_GATEWAY,
   ANTHROPIC_DIRECT,
+  initGitAndCommit,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -133,6 +134,8 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
 
       // Upload workspace files (excluding tests)
       await sandbox.uploadFiles(workspaceFiles);
+	  
+	  await initGitAndCommit(sandbox);
 
       // Run setup function if provided
       if (options.setup) {
