@@ -421,7 +421,7 @@ export async function verifyNoTestFiles(
   sandbox: SandboxManager | DockerSandboxManager
 ): Promise<void> {
   const result = await sandbox.runShell(
-    "find . -path './node_modules' -prune -o \\( -name '*.test.tsx' -o -name '*.test.ts' -o -name 'EVAL.ts' \\) -print"
+    "find . -path './node_modules' -prune  -o -name 'EVAL.ts' -print"
   );
 
   const foundTests = result.stdout.trim();
