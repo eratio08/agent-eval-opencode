@@ -1,5 +1,11 @@
 # @vercel/agent-eval
 
+## 0.6.1
+
+### Patch Changes
+
+- [#64](https://github.com/vercel-labs/agent-eval/pull/64) [`f7b663a`](https://github.com/vercel-labs/agent-eval/commit/f7b663a4edef22ac2de8dc72775c0d6e9d0ab10f) Thanks [@paoloricciuti](https://github.com/paoloricciuti)! - feat: add option to save the updated project inside results
+
 ## 0.6.0
 
 ### Minor Changes
