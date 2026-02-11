@@ -233,11 +233,16 @@ export async function runExperiment(
   const experimentResults = createExperimentResults(config, evalSummaries, startedAt, completedAt);
 
   // Save results to disk
+  const fixturePaths: Record<string, string> = {};
+  for (const fixture of fixtures) {
+    fixturePaths[fixture.name] = fixture.path;
+  }
   const outputDir = saveResults(experimentResults, {
     resultsDir,
     experimentName,
     fingerprints,
     smoke,
+    fixturePaths,
   });
 
   emit({ type: 'experiment:saved', outputDir });

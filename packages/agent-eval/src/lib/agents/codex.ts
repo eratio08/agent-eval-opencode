@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   AI_GATEWAY,
   OPENAI_DIRECT,
+  initGitAndCommit,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -190,6 +191,8 @@ export function createCodexAgent({ useVercelAiGateway }: { useVercelAiGateway: b
 
       // Upload workspace files (excluding tests)
       await sandbox.uploadFiles(workspaceFiles);
+	  
+	  await initGitAndCommit(sandbox);
 
       // Run setup function if provided
       if (options.setup) {
@@ -266,7 +269,7 @@ EOF`);
       const validationResults = await runValidation(sandbox, options.scripts ?? []);
 
       // Capture generated files
-      const generatedFiles = await captureGeneratedFiles(sandbox);
+      const { generatedFiles, deletedFiles } = await captureGeneratedFiles(sandbox);
 
       return {
         success: validationResults.allPassed,
@@ -277,6 +280,7 @@ EOF`);
         scriptsResults: validationResults.scripts,
         sandboxId: sandbox.sandboxId,
         generatedFiles,
+        deletedFiles,
       };
     } catch (error) {
       // Check if this was an abort

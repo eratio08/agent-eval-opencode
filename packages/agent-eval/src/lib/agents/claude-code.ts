@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   AI_GATEWAY,
   ANTHROPIC_DIRECT,
+  initGitAndCommit,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -133,6 +134,8 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
 
       // Upload workspace files (excluding tests)
       await sandbox.uploadFiles(workspaceFiles);
+	  
+	  await initGitAndCommit(sandbox);
 
       // Run setup function if provided
       if (options.setup) {
@@ -208,7 +211,7 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
       const validationResults = await runValidation(sandbox, options.scripts ?? []);
 
       // Capture generated files
-      const generatedFiles = await captureGeneratedFiles(sandbox);
+      const { generatedFiles, deletedFiles } = await captureGeneratedFiles(sandbox);
 
       return {
         success: validationResults.allPassed,
@@ -219,6 +222,7 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
         scriptsResults: validationResults.scripts,
         sandboxId: sandbox.sandboxId,
         generatedFiles,
+        deletedFiles,
       };
     } catch (error) {
       // Check if this was an abort

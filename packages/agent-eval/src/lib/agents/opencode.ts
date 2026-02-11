@@ -18,6 +18,7 @@ import {
   captureGeneratedFiles,
   createVitestConfig,
   AI_GATEWAY,
+  initGitAndCommit,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -149,6 +150,8 @@ export function createOpenCodeAgent(): Agent {
         // Upload workspace files (excluding tests)
         await sandbox.uploadFiles(workspaceFiles);
 
+		await initGitAndCommit(sandbox);
+
         // Run setup function if provided
         if (options.setup) {
           await options.setup(sandbox);
@@ -229,7 +232,7 @@ export function createOpenCodeAgent(): Agent {
         const validationResults = await runValidation(sandbox, options.scripts ?? []);
 
         // Capture generated files
-        const generatedFiles = await captureGeneratedFiles(sandbox);
+        const { generatedFiles, deletedFiles } = await captureGeneratedFiles(sandbox);
 
         return {
           success: validationResults.allPassed,
@@ -240,6 +243,7 @@ export function createOpenCodeAgent(): Agent {
           scriptsResults: validationResults.scripts,
           sandboxId: sandbox.sandboxId,
           generatedFiles,
+          deletedFiles,
         };
       } catch (error) {
         // Check if this was an abort
