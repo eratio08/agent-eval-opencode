@@ -89,6 +89,13 @@ export interface ExperimentConfig {
 
   /** Optional function to modify the prompt before running the experiment. @default undefined */
   editPrompt?: (prompt: string) => string;
+
+  /** Whether to copy project files into the result directory.
+   * - 'none': No files are copied (default)
+   * - 'changed': Only files the agent changed/created
+   * - 'all': Original project files + agent changes overlaid on top
+   * @default 'none' */
+  copyFiles?: 'none' | 'changed' | 'all';
 }
 
 /**
@@ -105,6 +112,7 @@ export interface ResolvedExperimentConfig {
   setup?: SetupFunction;
   sandbox: SandboxBackend | 'auto';
   editPrompt?: (prompt: string) => string;
+  copyFiles: 'none' | 'changed' | 'all';
 }
 
 /**
@@ -121,6 +129,7 @@ export interface RunnableExperimentConfig {
   setup?: SetupFunction;
   sandbox: SandboxBackend | 'auto';
   editPrompt?: (prompt: string) => string;
+  copyFiles: 'none' | 'changed' | 'all';
 }
 
 /**
@@ -190,6 +199,10 @@ export interface EvalRunData {
     /** npm script outputs (nested to avoid collision) */
     scripts?: Record<string, string>;
   };
+  /** Files generated/modified by the agent (path -> content). Used for copyFiles option. */
+  generatedFiles?: Record<string, string>;
+  /** Files deleted by the agent. Used for copyFiles option. */
+  deletedFiles?: string[];
 }
 
 /**

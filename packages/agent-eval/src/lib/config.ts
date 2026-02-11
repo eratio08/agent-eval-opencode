@@ -22,6 +22,7 @@ export const CONFIG_DEFAULTS = {
   scripts: [] as string[],
   timeout: 600, // 10 minutes
   sandbox: 'auto' as const,
+  copyFiles: 'none' as const,
 };
 
 /**
@@ -46,6 +47,7 @@ const experimentConfigSchema = z.object({
   setup: z.function().optional(),
   sandbox: z.enum(['vercel', 'docker', 'auto']).optional(),
   editPrompt: z.function().args(z.string()).returns(z.string()).optional(),
+  copyFiles: z.enum(['none', 'changed', 'all']).optional(),
 });
 
 /**
@@ -86,6 +88,7 @@ export function resolveConfig(config: ExperimentConfig): ResolvedExperimentConfi
     setup: config.setup,
     sandbox: config.sandbox ?? CONFIG_DEFAULTS.sandbox,
     editPrompt: config.editPrompt,
+    copyFiles: config.copyFiles ?? CONFIG_DEFAULTS.copyFiles,
   };
 }
 

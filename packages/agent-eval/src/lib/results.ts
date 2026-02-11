@@ -2,8 +2,8 @@
  * Results storage and reporting for eval experiments.
  */
 
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync, statSync } from 'fs';
-import { join } from 'path';
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync, statSync, unlinkSync } from 'fs';
+import { join, dirname } from 'path';
 import chalk from 'chalk';
 import type {
   EvalRunResult,
@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 import type { AgentRunResult } from './agents/types.js';
 import { parseTranscript, type Transcript } from './o11y/index.js';
+import { readFixtureFiles } from './fixture.js';
 
 /**
  * Convert AgentRunResult to EvalRunData (result + transcript).
@@ -45,6 +46,8 @@ export function agentResultToEvalRunData(agentResult: AgentRunResult): EvalRunDa
     },
     transcript: agentResult.transcript,
     outputContent: Object.keys(outputContent).length > 0 ? outputContent : undefined,
+    generatedFiles: agentResult.generatedFiles,
+    deletedFiles: agentResult.deletedFiles,
   };
 }
 
@@ -99,6 +102,8 @@ export interface SaveResultsOptions {
   validity?: Record<string, boolean>;
   /** Whether this is a smoke test run. Smoke results are excluded from reuse. */
   smoke?: boolean;
+  /** Per-eval fixture paths (eval name -> absolute path). Required when copyFiles is 'all'. */
+  fixturePaths?: Record<string, string>;
 }
 
 /**
@@ -224,6 +229,48 @@ export function saveResults(
 
         if (outputPaths.eval || (outputPaths.scripts && Object.keys(outputPaths.scripts).length > 0)) {
           resultWithPaths.outputPaths = outputPaths;
+        }
+      }
+
+      // Copy project files based on copyFiles config
+      const copyFiles = results.config.copyFiles;
+      const hasGeneratedFiles = runData.generatedFiles && Object.keys(runData.generatedFiles).length > 0;
+      const hasDeletedFiles = runData.deletedFiles && runData.deletedFiles.length > 0;
+	  console.log({ copyFiles, hasGeneratedFiles, hasDeletedFiles, options, runData })
+      if (copyFiles && copyFiles !== 'none' && (hasGeneratedFiles || hasDeletedFiles)) {
+        const projectDir = join(runDir, 'project');
+        mkdirSync(projectDir, { recursive: true });
+
+        // For 'all' mode, first copy original fixture files
+        if (copyFiles === 'all') {
+          const fixturePath = options.fixturePaths?.[evalSummary.name];
+          if (fixturePath) {
+            const fixtureFiles = readFixtureFiles(fixturePath);
+            for (const [filePath, content] of fixtureFiles) {
+              const fullPath = join(projectDir, filePath);
+              mkdirSync(dirname(fullPath), { recursive: true });
+              writeFileSync(fullPath, content);
+            }
+          }
+
+          // Remove deleted files from the copied project
+          if (runData.deletedFiles) {
+            for (const filePath of runData.deletedFiles) {
+              const fullPath = join(projectDir, filePath);
+              if (existsSync(fullPath)) {
+                unlinkSync(fullPath);
+              }
+            }
+          }
+        }
+
+        // Write generated files (overwrites originals in 'all' mode where paths match)
+        if (runData.generatedFiles) {
+          for (const [filePath, content] of Object.entries(runData.generatedFiles)) {
+            const fullPath = join(projectDir, filePath);
+            mkdirSync(dirname(fullPath), { recursive: true });
+            writeFileSync(fullPath, content);
+          }
         }
       }
 
