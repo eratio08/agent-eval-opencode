@@ -1,5 +1,11 @@
 # @vercel/agent-eval
 
+## 0.6.2
+
+### Patch Changes
+
+- [#69](https://github.com/vercel-labs/agent-eval/pull/69) [`93c1a63`](https://github.com/vercel-labs/agent-eval/commit/93c1a6390a25e583ed63c7818a4403f614acf2d7) Thanks [@paoloricciuti](https://github.com/paoloricciuti)! - fix: add all the files to track newly created files
+
 ## 0.6.1
 
 ### Patch Changes
