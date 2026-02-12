@@ -115,7 +115,7 @@ export async function captureGeneratedFiles(
 
   try {
     // Use --name-status to distinguish added/modified from deleted
-    const findResult = await sandbox.runShell("git diff HEAD --name-status");
+    const findResult = await sandbox.runShell("git add . && git diff HEAD --name-status");
 
     const lines = findResult.stdout
       .trim()
