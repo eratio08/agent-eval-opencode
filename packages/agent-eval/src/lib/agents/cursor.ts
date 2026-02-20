@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   CURSOR_DIRECT,
   initGitAndCommit,
+  injectTranscriptContext,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -199,6 +200,9 @@ export function createCursorAgent(): Agent {
 
         // Extract transcript from Cursor output
         const transcript = extractTranscriptFromOutput(agentOutput);
+
+        // Inject transcript context so EVAL.ts tests can assert on agent behavior
+        await injectTranscriptContext(sandbox, transcript, 'cursor', options.model);
 
         // Run validation scripts
         const validationResults = await runValidation(sandbox, options.scripts ?? []);

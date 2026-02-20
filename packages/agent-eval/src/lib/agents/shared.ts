@@ -5,9 +5,20 @@
 import type { ScriptResult } from './types.js';
 import type { SandboxManager } from '../sandbox.js';
 import type { DockerSandboxManager } from '../docker-sandbox.js';
+import { parseTranscript } from '../o11y/index.js';
 
 /** Union type for sandbox implementations */
 type AnySandbox = SandboxManager | DockerSandboxManager;
+
+/**
+ * Well-known directory where transcript context is written inside the sandbox.
+ * EVAL.ts tests can read `__agent_eval__/results.json` to assert on agent behavior
+ * (e.g. which shell commands were run, files modified, tool calls made).
+ */
+export const TRANSCRIPT_CONTEXT_DIR = '__agent_eval__';
+
+/** Path to the results file inside the sandbox. */
+export const TRANSCRIPT_CONTEXT_PATH = `${TRANSCRIPT_CONTEXT_DIR}/results.json`;
 
 /**
  * Combined validation results.
@@ -164,6 +175,35 @@ export default defineConfig({
 });
 `,
   });
+}
+
+/**
+ * Inject transcript context into the sandbox so EVAL.ts tests can assert on agent behavior.
+ * Writes parsed transcript summary to `__agent_eval__/results.json`.
+ *
+ * This is best-effort: failures are silently ignored since it's supplementary data.
+ */
+export async function injectTranscriptContext(
+  sandbox: AnySandbox,
+  rawTranscript: string | undefined,
+  agentName: string,
+  model?: string,
+): Promise<void> {
+  try {
+    const transcript = rawTranscript
+      ? parseTranscript(rawTranscript, agentName, model)
+      : null;
+
+    const context = {
+      o11y: transcript?.summary ?? null,
+    };
+
+    await sandbox.writeFiles({
+      [TRANSCRIPT_CONTEXT_PATH]: JSON.stringify(context, null, 2),
+    });
+  } catch {
+    // Best-effort: don't fail the eval if context injection fails
+  }
 }
 
 /**
