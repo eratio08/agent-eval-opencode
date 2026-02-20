@@ -20,6 +20,7 @@ import {
   AI_GATEWAY,
   ANTHROPIC_DIRECT,
   initGitAndCommit,
+  injectTranscriptContext,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -206,6 +207,9 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
 
       // Capture the Claude Code transcript
       const transcript = await captureTranscript(sandbox);
+
+      // Inject transcript context so EVAL.ts tests can assert on agent behavior
+      await injectTranscriptContext(sandbox, transcript, 'claude-code', options.model);
 
       // Run validation scripts
       const validationResults = await runValidation(sandbox, options.scripts ?? []);

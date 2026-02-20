@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   AI_GATEWAY,
   initGitAndCommit,
+  injectTranscriptContext,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -227,6 +228,9 @@ export function createOpenCodeAgent(): Agent {
 
         // Extract transcript from the OpenCode JSON output (--format json outputs JSONL)
         const transcript = extractTranscriptFromOutput(agentOutput);
+
+        // Inject transcript context so EVAL.ts tests can assert on agent behavior
+        await injectTranscriptContext(sandbox, transcript, 'vercel-ai-gateway/opencode', options.model);
 
         // Run validation scripts
         const validationResults = await runValidation(sandbox, options.scripts ?? []);

@@ -20,6 +20,7 @@ import {
   AI_GATEWAY,
   OPENAI_DIRECT,
   initGitAndCommit,
+  injectTranscriptContext,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -264,6 +265,9 @@ EOF`);
 
       // Extract transcript from the Codex JSON output (--json flag outputs JSONL)
       const transcript = extractTranscriptFromOutput(agentOutput);
+
+      // Inject transcript context so EVAL.ts tests can assert on agent behavior
+      await injectTranscriptContext(sandbox, transcript, 'codex', options.model);
 
       // Run validation scripts
       const validationResults = await runValidation(sandbox, options.scripts ?? []);

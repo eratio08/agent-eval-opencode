@@ -19,6 +19,7 @@ import {
   createVitestConfig,
   GEMINI_DIRECT,
   initGitAndCommit,
+  injectTranscriptContext,
 } from './shared.js';
 
 /** Union type for sandbox implementations */
@@ -200,6 +201,9 @@ export function createGeminiAgent(): Agent {
 
         // Extract transcript from the Gemini stream-json output (JSONL format)
         const transcript = extractTranscriptFromOutput(agentOutput);
+
+        // Inject transcript context so EVAL.ts tests can assert on agent behavior
+        await injectTranscriptContext(sandbox, transcript, 'gemini', options.model);
 
         // Run validation scripts
         const validationResults = await runValidation(sandbox, options.scripts ?? []);

@@ -126,6 +126,42 @@ test('project builds', () => {
 
 Use **EVAL.tsx** when your tests require JSX syntax (React Testing Library, component rendering). You only need one eval file per fixture -- choose `.tsx` if any test needs JSX.
 
+### Asserting on agent behavior
+
+EVAL.ts tests can assert not just on the files the agent produced, but on *how* it worked — which shell commands it ran, which files it read, how many tool calls it made, etc. The framework automatically parses the agent's transcript and writes the results to `__agent_eval__/results.json` in the sandbox before your tests run.
+
+```typescript
+import { test, expect } from 'vitest';
+import { readFileSync } from 'fs';
+
+test('agent used the correct scaffolding command', () => {
+  const results = JSON.parse(readFileSync('__agent_eval__/results.json', 'utf-8'));
+  const commands = results.o11y.shellCommands.map((c: { command: string }) => c.command);
+  expect(commands).toContain('npx create-next-app project');
+});
+
+test('agent did not make excessive tool calls', () => {
+  const results = JSON.parse(readFileSync('__agent_eval__/results.json', 'utf-8'));
+  expect(results.o11y.totalToolCalls).toBeLessThan(50);
+});
+```
+
+The `results.o11y` object is a `TranscriptSummary` with these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `shellCommands` | `{ command, exitCode?, success? }[]` | Shell commands the agent ran |
+| `filesRead` | `string[]` | Files the agent read |
+| `filesModified` | `string[]` | Files the agent wrote or edited |
+| `toolCalls` | `Record<ToolName, number>` | Count of each tool type used |
+| `totalToolCalls` | `number` | Total tool calls made |
+| `webFetches` | `{ url, method?, status?, success? }[]` | Web fetches made |
+| `totalTurns` | `number` | Conversation turns |
+| `errors` | `string[]` | Errors encountered |
+| `thinkingBlocks` | `number` | Thinking/reasoning blocks |
+
+> **Note**: If the agent's transcript is unavailable (e.g. the agent crashed before producing output), `results.o11y` will be `null`.
+
 ## Configuration Reference
 
 ### Experiment config
