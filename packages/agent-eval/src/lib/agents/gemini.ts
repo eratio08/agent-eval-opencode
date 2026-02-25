@@ -68,6 +68,7 @@ export function createGeminiAgent(): Agent {
       const startTime = Date.now();
       let sandbox: AnySandbox | null = null;
       let agentOutput = '';
+      let transcript: string | undefined;
       let aborted = false;
       let sandboxStopped = false;
 
@@ -180,6 +181,7 @@ export function createGeminiAgent(): Agent {
         );
 
         agentOutput = geminiResult.stdout + geminiResult.stderr;
+        transcript = extractTranscriptFromOutput(agentOutput);
 
         if (geminiResult.exitCode !== 0) {
           // Extract meaningful error from output (last few lines usually contain the error)
@@ -187,6 +189,7 @@ export function createGeminiAgent(): Agent {
           return {
             success: false,
             output: agentOutput,
+            transcript,
             error: errorLines || `Gemini CLI exited with code ${geminiResult.exitCode}`,
             duration: Date.now() - startTime,
             sandboxId: sandbox.sandboxId,
@@ -198,9 +201,6 @@ export function createGeminiAgent(): Agent {
 
         // Create vitest config for EVAL.ts/tsx
         await createVitestConfig(sandbox);
-
-        // Extract transcript from the Gemini stream-json output (JSONL format)
-        const transcript = extractTranscriptFromOutput(agentOutput);
 
         // Inject transcript context so EVAL.ts tests can assert on agent behavior
         await injectTranscriptContext(sandbox, transcript, 'gemini', options.model);
@@ -228,6 +228,7 @@ export function createGeminiAgent(): Agent {
           return {
             success: false,
             output: agentOutput,
+            transcript,
             error: 'Aborted',
             duration: Date.now() - startTime,
             sandboxId: sandbox?.sandboxId,
@@ -236,6 +237,7 @@ export function createGeminiAgent(): Agent {
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: error instanceof Error ? error.message : String(error),
           duration: Date.now() - startTime,
           sandboxId: sandbox?.sandboxId,

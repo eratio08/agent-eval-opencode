@@ -68,6 +68,7 @@ export function createCursorAgent(): Agent {
       const startTime = Date.now();
       let sandbox: AnySandbox | null = null;
       let agentOutput = '';
+      let transcript: string | undefined;
       let aborted = false;
       let sandboxStopped = false;
 
@@ -179,6 +180,7 @@ export function createCursorAgent(): Agent {
         );
 
         agentOutput = cursorResult.stdout + cursorResult.stderr;
+        transcript = extractTranscriptFromOutput(agentOutput);
 
         if (cursorResult.exitCode !== 0) {
           // Extract meaningful error from output (last few lines usually contain the error)
@@ -186,6 +188,7 @@ export function createCursorAgent(): Agent {
           return {
             success: false,
             output: agentOutput,
+            transcript,
             error: errorLines || `Cursor CLI exited with code ${cursorResult.exitCode}`,
             duration: Date.now() - startTime,
             sandboxId: sandbox.sandboxId,
@@ -197,9 +200,6 @@ export function createCursorAgent(): Agent {
 
         // Create vitest config for EVAL.ts/tsx
         await createVitestConfig(sandbox);
-
-        // Extract transcript from Cursor output
-        const transcript = extractTranscriptFromOutput(agentOutput);
 
         // Inject transcript context so EVAL.ts tests can assert on agent behavior
         await injectTranscriptContext(sandbox, transcript, 'cursor', options.model);
@@ -227,6 +227,7 @@ export function createCursorAgent(): Agent {
           return {
             success: false,
             output: agentOutput,
+            transcript,
             error: 'Aborted',
             duration: Date.now() - startTime,
             sandboxId: sandbox?.sandboxId,
@@ -235,6 +236,7 @@ export function createCursorAgent(): Agent {
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: error instanceof Error ? error.message : String(error),
           duration: Date.now() - startTime,
           sandboxId: sandbox?.sandboxId,

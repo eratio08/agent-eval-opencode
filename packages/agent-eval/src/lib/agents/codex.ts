@@ -133,6 +133,7 @@ export function createCodexAgent({ useVercelAiGateway }: { useVercelAiGateway: b
     const startTime = Date.now();
     let sandbox: AnySandbox | null = null;
     let agentOutput = '';
+    let transcript: string | undefined;
     let aborted = false;
     let sandboxStopped = false;
 
@@ -244,6 +245,7 @@ EOF`);
       );
 
       agentOutput = codexResult.stdout + codexResult.stderr;
+      transcript = extractTranscriptFromOutput(agentOutput);
 
       if (codexResult.exitCode !== 0) {
         // Extract meaningful error from output (last few lines usually contain the error)
@@ -251,6 +253,7 @@ EOF`);
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: errorLines || `Codex CLI exited with code ${codexResult.exitCode}`,
           duration: Date.now() - startTime,
           sandboxId: sandbox.sandboxId,
@@ -262,9 +265,6 @@ EOF`);
 
       // Create vitest config for EVAL.ts/tsx
       await createVitestConfig(sandbox);
-
-      // Extract transcript from the Codex JSON output (--json flag outputs JSONL)
-      const transcript = extractTranscriptFromOutput(agentOutput);
 
       // Inject transcript context so EVAL.ts tests can assert on agent behavior
       await injectTranscriptContext(sandbox, transcript, 'codex', options.model);
@@ -292,6 +292,7 @@ EOF`);
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: 'Aborted',
           duration: Date.now() - startTime,
           sandboxId: sandbox?.sandboxId,
@@ -300,6 +301,7 @@ EOF`);
       return {
         success: false,
         output: agentOutput,
+        transcript,
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
         sandboxId: sandbox?.sandboxId,

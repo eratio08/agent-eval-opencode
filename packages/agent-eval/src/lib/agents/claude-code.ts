@@ -76,8 +76,15 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
     const startTime = Date.now();
     let sandbox: AnySandbox | null = null;
     let agentOutput = '';
+    let transcript: string | undefined;
     let aborted = false;
     let sandboxStopped = false;
+    let hasReturned = false;
+
+    const captureTranscriptBestEffort = async () => {
+      if (!sandbox || sandboxStopped || transcript) return;
+      transcript = await captureTranscript(sandbox);
+    };
 
     // Handle abort signal
     const abortHandler = () => {
@@ -90,6 +97,7 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
 
     if (options.signal) {
       if (options.signal.aborted) {
+          hasReturned = true;
         return {
           success: false,
           output: '',
@@ -107,6 +115,7 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
 
       // Check for abort before expensive operations
       if (aborted) {
+        hasReturned = true;
         return {
           success: false,
           output: '',
@@ -124,6 +133,7 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
 
       // Check for abort after sandbox creation (abort may have fired during create)
       if (aborted) {
+        hasReturned = true;
         return {
           success: false,
           output: '',
@@ -188,11 +198,14 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
       agentOutput = claudeResult.stdout + claudeResult.stderr;
 
       if (claudeResult.exitCode !== 0) {
+        await captureTranscriptBestEffort();
         // Extract meaningful error from output (last few lines usually contain the error)
         const errorLines = agentOutput.trim().split('\n').slice(-5).join('\n');
+        hasReturned = true;
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: errorLines || `Claude Code exited with code ${claudeResult.exitCode}`,
           duration: Date.now() - startTime,
           sandboxId: sandbox.sandboxId,
@@ -205,8 +218,8 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
       // Create vitest config for EVAL.ts/tsx
       await createVitestConfig(sandbox);
 
-      // Capture the Claude Code transcript
-      const transcript = await captureTranscript(sandbox);
+      // Capture transcript before validation when available
+      await captureTranscriptBestEffort();
 
       // Inject transcript context so EVAL.ts tests can assert on agent behavior
       await injectTranscriptContext(sandbox, transcript, 'claude-code', options.model);
@@ -217,6 +230,7 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
       // Capture generated files
       const { generatedFiles, deletedFiles } = await captureGeneratedFiles(sandbox);
 
+      hasReturned = true;
       return {
         success: validationResults.allPassed,
         output: agentOutput,
@@ -229,24 +243,33 @@ export function createClaudeCodeAgent({ useVercelAiGateway }: { useVercelAiGatew
         deletedFiles,
       };
     } catch (error) {
+      await captureTranscriptBestEffort();
       // Check if this was an abort
       if (aborted) {
+        hasReturned = true;
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: 'Aborted',
           duration: Date.now() - startTime,
           sandboxId: sandbox?.sandboxId,
         };
       }
+      hasReturned = true;
       return {
         success: false,
         output: agentOutput,
+        transcript,
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
         sandboxId: sandbox?.sandboxId,
       };
     } finally {
+      // If we're about to return and sandbox is still up, try one final transcript capture.
+      if (hasReturned) {
+        await captureTranscriptBestEffort();
+      }
       // Clean up abort listener
       if (options.signal) {
         options.signal.removeEventListener('abort', abortHandler);

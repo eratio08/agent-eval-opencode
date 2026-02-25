@@ -91,6 +91,7 @@ export function createOpenCodeAgent(): Agent {
       const startTime = Date.now();
       let sandbox: AnySandbox | null = null;
       let agentOutput = '';
+      let transcript: string | undefined;
       let aborted = false;
       let sandboxStopped = false;
 
@@ -207,6 +208,7 @@ export function createOpenCodeAgent(): Agent {
         );
 
         agentOutput = opencodeResult.stdout + opencodeResult.stderr;
+        transcript = extractTranscriptFromOutput(agentOutput);
 
         if (opencodeResult.exitCode !== 0) {
           // Extract meaningful error from output (last few lines usually contain the error)
@@ -214,6 +216,7 @@ export function createOpenCodeAgent(): Agent {
           return {
             success: false,
             output: agentOutput,
+            transcript,
             error: errorLines || `OpenCode CLI exited with code ${opencodeResult.exitCode}`,
             duration: Date.now() - startTime,
             sandboxId: sandbox.sandboxId,
@@ -225,9 +228,6 @@ export function createOpenCodeAgent(): Agent {
 
         // Create vitest config for EVAL.ts/tsx
         await createVitestConfig(sandbox);
-
-        // Extract transcript from the OpenCode JSON output (--format json outputs JSONL)
-        const transcript = extractTranscriptFromOutput(agentOutput);
 
         // Inject transcript context so EVAL.ts tests can assert on agent behavior
         await injectTranscriptContext(sandbox, transcript, 'vercel-ai-gateway/opencode', options.model);
@@ -255,6 +255,7 @@ export function createOpenCodeAgent(): Agent {
           return {
             success: false,
             output: agentOutput,
+            transcript,
             error: 'Aborted',
             duration: Date.now() - startTime,
             sandboxId: sandbox?.sandboxId,
@@ -263,6 +264,7 @@ export function createOpenCodeAgent(): Agent {
         return {
           success: false,
           output: agentOutput,
+          transcript,
           error: error instanceof Error ? error.message : String(error),
           duration: Date.now() - startTime,
           sandboxId: sandbox?.sandboxId,
