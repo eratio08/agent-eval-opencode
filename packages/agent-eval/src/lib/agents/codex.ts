@@ -95,16 +95,10 @@ model_provider = "vercel"
 model = "${fullModel}"
 `;
   } else {
-    // Direct OpenAI API uses unprefixed model names like "gpt-5.2-codex"
+    // Direct OpenAI API — use the built-in "openai" provider (no custom provider needed)
     const directModel = model.includes('/') ? model.split('/').pop()! : model;
     return `# Direct OpenAI API configuration
 profile = "default"
-
-[model_providers.openai]
-name = "OpenAI"
-base_url = "${OPENAI_DIRECT.baseUrl}"
-env_key = "${OPENAI_DIRECT.apiKeyEnvVar}"
-wire_api = "responses"
 
 [profiles.default]
 model_provider = "openai"
@@ -235,12 +229,14 @@ EOF`);
       await verifyNoTestFiles(sandbox);
 
       // Build Codex CLI command
-      // codex login sets up bearer auth for the CLI; env var provides the key for the model provider
       const envVarToSet = useVercelAiGateway ? AI_GATEWAY.apiKeyEnvVar : OPENAI_DIRECT.apiKeyEnvVar;
       const escapedPrompt = options.prompt.replace(/'/g, "'\\''");
       const reasoningFlag = reasoningEffort ? ` -c model_reasoning_effort="${reasoningEffort}"` : '';
+      // Direct OpenAI API needs unprefixed model names (e.g. "gpt-5.2-codex" not "openai/gpt-5.2-codex")
+      const cliModel = useVercelAiGateway ? baseModel : (baseModel.includes('/') ? baseModel.split('/').pop()! : baseModel);
+      // codex login sets up bearer auth for the CLI; the built-in openai provider requires it
       const codexResult = await sandbox.runShell(
-        `echo '${options.apiKey}' | codex login --with-api-key && codex exec --model ${baseModel} --dangerously-bypass-approvals-and-sandbox --json --skip-git-repo-check${reasoningFlag} '${escapedPrompt}'`,
+        `echo '${options.apiKey}' | codex login --with-api-key && codex exec --model ${cliModel} --dangerously-bypass-approvals-and-sandbox --json --skip-git-repo-check${reasoningFlag} '${escapedPrompt}'`,
         { [envVarToSet]: options.apiKey }
       );
 
