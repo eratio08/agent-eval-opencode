@@ -1257,6 +1257,29 @@ test('greet exists', () => {
       300000
     );
 
+    // Codex + GPT 5.4 xhigh on Vercel
+    it.concurrent.skipIf(!hasVercelSandbox)(
+      'Codex + gpt-5.4 xhigh on Vercel',
+      async () => {
+        const fixture = createTestFixture('codex-gpt54-xhigh-vercel');
+        const result = await runSingleEval(fixture, {
+          agent: 'vercel-ai-gateway/codex',
+          model: 'openai/gpt-5.4?reasoningEffort=xhigh',
+          timeout: 300,
+          apiKey: process.env.AI_GATEWAY_API_KEY!,
+          scripts: ['build'],
+          sandbox: 'vercel',
+        });
+        expect(result.result.duration).toBeGreaterThan(0);
+        // Agent must actually succeed - not just return a result
+      if (result.result.status === 'failed') {
+        console.error('Agent failed with error:', result.result.error);
+      }
+      expect(result.result.status).toBe('passed');
+      },
+      600000
+    );
+
   });
 
   describe('CLI commands', () => {
