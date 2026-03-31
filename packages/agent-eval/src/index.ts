@@ -77,6 +77,7 @@ export {
   saveResults,
   scanReusableResults,
 } from './lib/results.js'
+export { gradeRunWithRubric } from './lib/rubric.js'
 // Re-export runner utilities
 export type { RunExperimentOptions } from './lib/runner.js'
 export { runExperiment, runSingleEval, StartRateLimiter } from './lib/runner.js'
@@ -105,6 +106,7 @@ export type {
   AgentType,
   Classification,
   EvalFilter,
+  EvalMethodSummary,
   EvalFixture,
   EvalRunData,
   EvalRunResult,
@@ -114,6 +116,8 @@ export type {
   FailureType,
   ModelTier,
   ProgressEvent,
+  RubricConfig,
+  RubricRunResult,
   ResolvedExperimentConfig,
   Sandbox,
   SetupFunction,

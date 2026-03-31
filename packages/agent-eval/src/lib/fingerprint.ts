@@ -21,6 +21,7 @@ interface FingerprintableConfig {
   timeout: number
   earlyExit: boolean
   runs: number
+  rubric?: string
 }
 
 /**
@@ -72,6 +73,7 @@ export function computeFingerprint(evalPath: string, config: RunnableExperimentC
     timeout: config.timeout,
     earlyExit: config.earlyExit,
     runs: config.runs,
+    rubric: config.rubric ? JSON.stringify(config.rubric) : undefined,
   }
   hash.update(`config:${JSON.stringify(configForHash)}`)
 
