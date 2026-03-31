@@ -1,4 +1,6 @@
-# @vercel/agent-eval
+# agent-eval-opencode
+
+> Fork of [`@vercel/agent-eval`](https://github.com/vercel-labs/agent-eval).
 
 Test AI coding agents on your framework. Measure what actually works.
 
@@ -16,21 +18,17 @@ You're building a frontend framework and want AI agents to work well with it. Bu
 
 ```bash
 # Create a new eval project
-npx @vercel/agent-eval init my-agent-evals
+pnpx agent-eval-opencode init my-agent-evals
 cd my-agent-evals
 
 # Install dependencies
-npm install
-
-# Add your API keys
-cp .env.example .env
-# Edit .env with your AI_GATEWAY_API_KEY and VERCEL_TOKEN
+pnpm install
 
 # Preview what will run (no API calls, no cost)
-npx @vercel/agent-eval --dry
+pnpx agent-eval-opencode --dry
 
 # Run all experiments
-npx @vercel/agent-eval
+pnpx agent-eval-opencode
 ```
 
 ## CLI
@@ -38,7 +36,7 @@ npx @vercel/agent-eval
 ### Run all experiments
 
 ```bash
-npx @vercel/agent-eval
+npx agent-eval-opencode
 ```
 
 With no arguments, the CLI discovers every `experiments/*.ts` file and runs them all. Each experiment runs in parallel. Results with matching fingerprints are reused automatically (see [Result Reuse](#result-reuse)).
@@ -46,7 +44,7 @@ With no arguments, the CLI discovers every `experiments/*.ts` file and runs them
 ### Run a single experiment
 
 ```bash
-npx @vercel/agent-eval cc
+npx agent-eval-opencode cc
 ```
 
 The argument is the experiment filename without `.ts`. This resolves to `experiments/cc.ts`.
@@ -62,18 +60,18 @@ The argument is the experiment filename without `.ts`. This resolves to `experim
 Flags work with both modes:
 
 ```bash
-npx @vercel/agent-eval --dry          # preview all experiments
-npx @vercel/agent-eval cc --dry       # preview a single experiment
-npx @vercel/agent-eval --smoke        # smoke test all experiments
-npx @vercel/agent-eval cc --smoke     # smoke test one experiment
+pnpx agent-eval-opencode --dry          # preview all experiments
+pnpx agent-eval-opencode cc --dry       # preview a single experiment
+pnpx agent-eval-opencode --smoke        # smoke test all experiments
+pnpx agent-eval-opencode cc --smoke     # smoke test one experiment
 ```
 
 ### Other commands
 
 ```bash
-npx @vercel/agent-eval init <name>          # scaffold a new eval project
-npx @vercel/agent-eval playground           # launch web-based results viewer
-npx @vercel/agent-eval playground --watch   # live mode (watches for new results)
+pnpx agent-eval-opencode init <name>          # scaffold a new eval project
+pnpx agent-eval-opencode playground           # launch Vercel's official results viewer
+pnpx agent-eval-opencode playground --watch   # live mode (watches for new results)
 ```
 
 ## Creating Evals
@@ -120,7 +118,7 @@ test('has required props', () => {
 });
 
 test('project builds', () => {
-  execSync('npm run build', { stdio: 'pipe' });
+  execSync('pnpm run build', { stdio: 'pipe' });
 });
 ```
 
@@ -168,7 +166,7 @@ The `results.o11y` object is a `TranscriptSummary` with these fields:
 
 ```typescript
 // experiments/my-experiment.ts
-import type { ExperimentConfig } from '@vercel/agent-eval';
+import type { ExperimentConfig } from 'agent-eval-opencode';
 
 const config: ExperimentConfig = {
   // Required: which agent to use
@@ -263,7 +261,7 @@ The real power is comparing different approaches. Create multiple experiment con
 
 ```typescript
 // experiments/control.ts
-import type { ExperimentConfig } from '@vercel/agent-eval';
+import type { ExperimentConfig } from 'agent-eval-opencode';
 
 const config: ExperimentConfig = {
   agent: 'vercel-ai-gateway/claude-code',
@@ -277,7 +275,7 @@ export default config;
 
 ```typescript
 // experiments/with-mcp.ts
-import type { ExperimentConfig } from '@vercel/agent-eval';
+import type { ExperimentConfig } from 'agent-eval-opencode';
 
 const config: ExperimentConfig = {
   agent: 'vercel-ai-gateway/claude-code',
@@ -298,7 +296,7 @@ export default config;
 ```
 
 ```bash
-npx @vercel/agent-eval
+npx agent-eval-opencode
 ```
 
 Compare the results:
@@ -365,7 +363,7 @@ The `fingerprint` field enables result reuse across runs. The `classification` a
 Browse results in a web-based dashboard:
 
 ```bash
-npx @vercel/agent-eval playground
+npx agent-eval-opencode playground
 ```
 
 This opens a local Next.js app with:
@@ -374,9 +372,11 @@ This opens a local Next.js app with:
 - **Transcript viewer** to inspect agent tool calls, thinking, and errors
 - **Compare** two runs side-by-side with pass rate deltas
 
+The `playground` command delegates to Vercel's official `@vercel/agent-eval-playground` package.
+
 Options:
 ```bash
-npx @vercel/agent-eval playground --results-dir ./results --evals-dir ./evals --port 3001
+npx agent-eval-opencode playground --results-dir ./results --evals-dir ./evals --port 3001
 ```
 
 ### File Copying
@@ -499,7 +499,7 @@ Claude Code via direct API with Docker sandbox:
 
 ```typescript
 // experiments/my-eval.ts
-import type { ExperimentConfig } from '@vercel/agent-eval';
+import type { ExperimentConfig } from 'agent-eval-opencode';
 
 const config: ExperimentConfig = {
   agent: 'claude-code',  // Direct API (not vercel-ai-gateway/...)

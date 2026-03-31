@@ -18,42 +18,42 @@ export type ToolName =
   | 'grep'
   | 'list_dir'
   | 'agent_task'
-  | 'unknown';
+  | 'unknown'
 
 /**
  * An event in the transcript.
  */
 export interface TranscriptEvent {
   /** ISO timestamp of the event */
-  timestamp?: string;
+  timestamp?: string
 
   /** Event type */
-  type: 'message' | 'tool_call' | 'tool_result' | 'thinking' | 'error';
+  type: 'message' | 'tool_call' | 'tool_result' | 'thinking' | 'error'
 
   /** For message events: the role */
-  role?: 'user' | 'assistant' | 'system';
+  role?: 'user' | 'assistant' | 'system'
 
   /** Text content (for messages, thinking, errors) */
-  content?: string;
+  content?: string
 
   /** For tool_call and tool_result events */
   tool?: {
     /** Canonical tool name */
-    name: ToolName;
+    name: ToolName
     /** Original tool name from the agent */
-    originalName: string;
+    originalName: string
     /** Tool arguments */
-    args?: Record<string, unknown>;
+    args?: Record<string, unknown>
     /** Tool result (for tool_result events) */
-    result?: unknown;
+    result?: unknown
     /** Duration in milliseconds (if available) */
-    durationMs?: number;
+    durationMs?: number
     /** Whether the tool call succeeded */
-    success?: boolean;
-  };
+    success?: boolean
+  }
 
   /** Raw event data from the agent (for debugging) */
-  raw?: unknown;
+  raw?: unknown
 }
 
 /**
@@ -61,13 +61,13 @@ export interface TranscriptEvent {
  */
 export interface WebFetchInfo {
   /** The URL that was fetched */
-  url: string;
+  url: string
   /** HTTP method (if known) */
-  method?: string;
+  method?: string
   /** HTTP status code (if available) */
-  status?: number;
+  status?: number
   /** Whether the fetch succeeded */
-  success?: boolean;
+  success?: boolean
 }
 
 /**
@@ -75,9 +75,9 @@ export interface WebFetchInfo {
  */
 export interface FileOperationInfo {
   /** File path */
-  path: string;
+  path: string
   /** Operation type */
-  operation: 'read' | 'write' | 'edit';
+  operation: 'read' | 'write' | 'edit'
 }
 
 /**
@@ -85,11 +85,11 @@ export interface FileOperationInfo {
  */
 export interface ShellCommandInfo {
   /** The command that was run */
-  command: string;
+  command: string
   /** Exit code (if available) */
-  exitCode?: number;
+  exitCode?: number
   /** Whether the command succeeded */
-  success?: boolean;
+  success?: boolean
 }
 
 /**
@@ -97,31 +97,31 @@ export interface ShellCommandInfo {
  */
 export interface TranscriptSummary {
   /** Total number of conversation turns */
-  totalTurns: number;
+  totalTurns: number
 
   /** Count of each tool type used */
-  toolCalls: Record<ToolName, number>;
+  toolCalls: Record<ToolName, number>
 
   /** Total tool calls */
-  totalToolCalls: number;
+  totalToolCalls: number
 
   /** Web fetches made during the run */
-  webFetches: WebFetchInfo[];
+  webFetches: WebFetchInfo[]
 
   /** Files that were read */
-  filesRead: string[];
+  filesRead: string[]
 
   /** Files that were written or edited */
-  filesModified: string[];
+  filesModified: string[]
 
   /** Shell commands executed */
-  shellCommands: ShellCommandInfo[];
+  shellCommands: ShellCommandInfo[]
 
   /** Errors encountered */
-  errors: string[];
+  errors: string[]
 
   /** Thinking/reasoning blocks (if available) */
-  thinkingBlocks: number;
+  thinkingBlocks: number
 }
 
 /**
@@ -129,20 +129,20 @@ export interface TranscriptSummary {
  */
 export interface Transcript {
   /** Agent that produced this transcript */
-  agent: string;
+  agent: string
 
   /** Model used (if known) */
-  model?: string;
+  model?: string
 
   /** All events in order */
-  events: TranscriptEvent[];
+  events: TranscriptEvent[]
 
   /** Derived summary statistics */
-  summary: TranscriptSummary;
+  summary: TranscriptSummary
 
   /** Whether parsing succeeded fully */
-  parseSuccess: boolean;
+  parseSuccess: boolean
 
   /** Any parsing warnings/errors */
-  parseErrors?: string[];
+  parseErrors?: string[]
 }

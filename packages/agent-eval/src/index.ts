@@ -4,139 +4,122 @@
  * Framework for testing AI coding agents in isolated sandboxes.
  */
 
-// Re-export types
-export type {
-  AgentType,
-  ModelTier,
-  EvalFilter,
-  Sandbox,
-  SetupFunction,
-  ExperimentConfig,
-  ResolvedExperimentConfig,
-  EvalFixture,
-  EvalRunResult,
-  EvalRunData,
-  EvalSummary,
-  ProgressEvent,
-  ExperimentResults,
-  FailureType,
-  Classification,
-} from './lib/types.js';
-
-// Re-export constants
-export { REQUIRED_EVAL_FILES, EXCLUDED_FILES } from './lib/types.js';
-
+export { getAgent, listAgents, registerAgent } from './lib/agents/index.js'
+// Re-export transcript context constants
+export { TRANSCRIPT_CONTEXT_DIR, TRANSCRIPT_CONTEXT_PATH } from './lib/agents/shared.js'
+// Re-export agent utilities
+// Re-export agent registry
+export type { Agent, AgentRunOptions, AgentRunResult, ScriptResult } from './lib/agents/types.js'
+// Re-export classifier
+export {
+  classifyFailure,
+  classifyWithAI,
+  isClassifierEnabled,
+  isNonModelFailure,
+} from './lib/classifier.js'
 // Re-export config utilities
 export {
   CONFIG_DEFAULTS,
-  validateConfig,
-  resolveConfig,
   loadConfig,
+  resolveConfig,
   resolveEvalNames,
-} from './lib/config.js';
-
+  validateConfig,
+} from './lib/config.js'
+// Re-export dashboard utilities
+export { createConsoleProgressHandler, Dashboard } from './lib/dashboard.js'
+// Re-export Docker sandbox
+export type { DockerSandboxOptions } from './lib/docker-sandbox.js'
+export { DockerSandboxManager } from './lib/docker-sandbox.js'
+// Re-export fingerprinting
+export { computeFingerprint } from './lib/fingerprint.js'
 // Re-export fixture utilities
 export {
-  FixtureValidationError,
   discoverFixtures,
+  FixtureValidationError,
+  getFixtureFiles,
+  loadAllFixtures,
+  loadFixture,
+  readFixtureFiles,
   validateFixtureFiles,
   validatePackageJson,
-  loadFixture,
-  loadAllFixtures,
-  getFixtureFiles,
-  readFixtureFiles,
-} from './lib/fixture.js';
-
-// Re-export sandbox utilities
+} from './lib/fixture.js'
+// Re-export housekeeping
+export { housekeep } from './lib/housekeeping.js'
+// Re-export init utilities
+export type { InitOptions } from './lib/init.js'
+export { getPostInitInstructions, initProject } from './lib/init.js'
+// Re-export o11y (observability) utilities
 export type {
-  SandboxOptions,
-  CommandResult,
-  SandboxFile,
-  SandboxBackend,
-  SandboxBackendInfo,
-} from './lib/sandbox.js';
+  FileOperationInfo,
+  ParseableAgent,
+  ShellCommandInfo,
+  ToolName,
+  Transcript,
+  TranscriptEvent,
+  TranscriptSummary,
+  WebFetchInfo,
+} from './lib/o11y/index.js'
 export {
-  SandboxManager,
-  DEFAULT_SANDBOX_TIMEOUT,
-  IGNORED_PATTERNS,
-  TEST_FILE_PATTERNS,
-  collectLocalFiles,
-  splitTestFiles,
-  verifyNoTestFiles,
-  createSandbox,
-  resolveBackend,
-  getSandboxBackendInfo,
-} from './lib/sandbox.js';
-
-// Re-export Docker sandbox
-export type { DockerSandboxOptions } from './lib/docker-sandbox.js';
-export { DockerSandboxManager } from './lib/docker-sandbox.js';
-
-// Re-export agent utilities
-export type { AgentRunOptions, AgentRunResult } from './lib/agents/types.js';
-
-// Re-export transcript context constants
-export { TRANSCRIPT_CONTEXT_DIR, TRANSCRIPT_CONTEXT_PATH } from './lib/agents/shared.js';
-
-// Re-export agent registry
-export type { Agent, ScriptResult } from './lib/agents/types.js';
-export { getAgent, listAgents, registerAgent } from './lib/agents/index.js';
-
+  loadTranscript,
+  parseClaudeCodeTranscript,
+  parseCodexTranscript,
+  parseOpenCodeTranscript,
+  parseTranscript,
+  parseTranscriptSummary,
+  SUPPORTED_AGENTS,
+} from './lib/o11y/index.js'
 // Re-export results utilities
-export type { SaveResultsOptions, ReusableResult } from './lib/results.js';
+export type { ReusableResult, SaveResultsOptions } from './lib/results.js'
 export {
   agentResultToEvalRunData,
   createEvalSummary,
   createExperimentResults,
-  saveResults,
+  createProgressDisplay,
   formatResultsTable,
   formatRunResult,
-  createProgressDisplay,
+  saveResults,
   scanReusableResults,
-} from './lib/results.js';
-
-// Re-export fingerprinting
-export { computeFingerprint } from './lib/fingerprint.js';
-
-// Re-export classifier
-export {
-  isClassifierEnabled,
-  classifyFailure,
-  classifyWithAI,
-  isNonModelFailure,
-} from './lib/classifier.js';
-
-// Re-export housekeeping
-export { housekeep } from './lib/housekeeping.js';
-
+} from './lib/results.js'
 // Re-export runner utilities
-export type { RunExperimentOptions } from './lib/runner.js';
-export { runExperiment, runSingleEval, StartRateLimiter } from './lib/runner.js';
-
-// Re-export dashboard utilities
-export { Dashboard, createConsoleProgressHandler } from './lib/dashboard.js';
-
-// Re-export init utilities
-export type { InitOptions } from './lib/init.js';
-export { initProject, getPostInitInstructions } from './lib/init.js';
-
-// Re-export o11y (observability) utilities
+export type { RunExperimentOptions } from './lib/runner.js'
+export { runExperiment, runSingleEval, StartRateLimiter } from './lib/runner.js'
+// Re-export sandbox utilities
 export type {
-  ToolName,
-  TranscriptEvent,
-  WebFetchInfo,
-  FileOperationInfo,
-  ShellCommandInfo,
-  TranscriptSummary,
-  Transcript,
-  ParseableAgent,
-} from './lib/o11y/index.js';
+  CommandResult,
+  SandboxBackend,
+  SandboxBackendInfo,
+  SandboxFile,
+  SandboxOptions,
+} from './lib/sandbox.js'
 export {
-  parseTranscript,
-  parseTranscriptSummary,
-  loadTranscript,
-  SUPPORTED_AGENTS,
-  parseClaudeCodeTranscript,
-  parseCodexTranscript,
-  parseOpenCodeTranscript,
-} from './lib/o11y/index.js';
+  collectLocalFiles,
+  createSandbox,
+  DEFAULT_SANDBOX_TIMEOUT,
+  getSandboxBackendInfo,
+  IGNORED_PATTERNS,
+  resolveBackend,
+  SandboxManager,
+  splitTestFiles,
+  TEST_FILE_PATTERNS,
+  verifyNoTestFiles,
+} from './lib/sandbox.js'
+// Re-export types
+export type {
+  AgentType,
+  Classification,
+  EvalFilter,
+  EvalFixture,
+  EvalRunData,
+  EvalRunResult,
+  EvalSummary,
+  ExperimentConfig,
+  ExperimentResults,
+  FailureType,
+  ModelTier,
+  ProgressEvent,
+  ResolvedExperimentConfig,
+  Sandbox,
+  SetupFunction,
+} from './lib/types.js'
+// Re-export constants
+export { EXCLUDED_FILES, REQUIRED_EVAL_FILES } from './lib/types.js'

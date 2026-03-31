@@ -7,7 +7,7 @@
  * - Messages, function calls, and results are separate events
  */
 
-import type { TranscriptEvent, ToolName } from '../types.js';
+import type { ToolName, TranscriptEvent } from '../types.js'
 
 /**
  * Map Codex tool names to canonical names.
@@ -47,75 +47,75 @@ function normalizeToolName(name: string): ToolName {
     ls: 'list_dir',
     list_directory: 'list_dir',
     dir: 'list_dir',
-  };
+  }
 
-  return toolMap[name.toLowerCase()] || 'unknown';
+  return toolMap[name.toLowerCase()] || 'unknown'
 }
 
 /**
  * Extract file path from tool arguments.
  */
 function extractFilePath(args: Record<string, unknown>): string | undefined {
-  return (args.path || args.file || args.filename || args.file_path) as string | undefined;
+  return (args.path || args.file || args.filename || args.file_path) as string | undefined
 }
 
 /**
  * Extract URL from tool arguments.
  */
 function extractUrl(args: Record<string, unknown>): string | undefined {
-  return (args.url || args.uri || args.endpoint) as string | undefined;
+  return (args.url || args.uri || args.endpoint) as string | undefined
 }
 
 /**
  * Extract command from tool arguments.
  */
 function extractCommand(args: Record<string, unknown>): string | undefined {
-  if (typeof args.command === 'string') return args.command;
-  if (Array.isArray(args.command)) return args.command.join(' ');
-  if (typeof args.cmd === 'string') return args.cmd;
+  if (typeof args.command === 'string') return args.command
+  if (Array.isArray(args.command)) return args.command.join(' ')
+  if (typeof args.cmd === 'string') return args.cmd
   if (Array.isArray(args.args) && typeof args.program === 'string') {
-    return `${args.program} ${(args.args as string[]).join(' ')}`;
+    return `${args.program} ${(args.args as string[]).join(' ')}`
   }
-  return undefined;
+  return undefined
 }
 
 /**
  * Parse a single JSONL line from Codex transcript.
  */
 function parseCodexLine(line: string): TranscriptEvent[] {
-  const events: TranscriptEvent[] = [];
+  const events: TranscriptEvent[] = []
 
   try {
-    const data = JSON.parse(line);
+    const data = JSON.parse(line)
 
     // Codex uses various event type formats
-    const eventType = data.type || data.event || data.kind;
+    const eventType = data.type || data.event || data.kind
 
     switch (eventType) {
       case 'message':
       case 'chat':
       case 'response': {
-        const role = data.role || (data.from === 'assistant' ? 'assistant' : 'user');
+        const role = data.role || (data.from === 'assistant' ? 'assistant' : 'user')
         events.push({
           timestamp: data.timestamp || data.ts,
           type: 'message',
           role: role as 'user' | 'assistant' | 'system',
           content: data.content || data.text || data.message,
           raw: data,
-        });
-        break;
+        })
+        break
       }
 
       case 'function_call':
       case 'tool_call':
       case 'tool_use':
       case 'action': {
-        const name = data.function?.name || data.name || data.tool || data.action;
+        const name = data.function?.name || data.name || data.tool || data.action
         const args = data.function?.arguments
           ? typeof data.function.arguments === 'string'
             ? JSON.parse(data.function.arguments)
             : data.function.arguments
-          : data.arguments || data.input || data.params || {};
+          : data.arguments || data.input || data.params || {}
 
         events.push({
           timestamp: data.timestamp || data.ts,
@@ -126,8 +126,8 @@ function parseCodexLine(line: string): TranscriptEvent[] {
             args,
           },
           raw: data,
-        });
-        break;
+        })
+        break
       }
 
       case 'function_result':
@@ -144,8 +144,8 @@ function parseCodexLine(line: string): TranscriptEvent[] {
             success: data.success !== false && !data.error,
           },
           raw: data,
-        });
-        break;
+        })
+        break
       }
 
       case 'thinking':
@@ -156,8 +156,8 @@ function parseCodexLine(line: string): TranscriptEvent[] {
           type: 'thinking',
           content: data.content || data.text || data.thought,
           raw: data,
-        });
-        break;
+        })
+        break
       }
 
       case 'error': {
@@ -166,8 +166,8 @@ function parseCodexLine(line: string): TranscriptEvent[] {
           type: 'error',
           content: data.error?.message || data.message || data.content,
           raw: data,
-        });
-        break;
+        })
+        break
       }
 
       // Codex Responses API events
@@ -181,12 +181,10 @@ function parseCodexLine(line: string): TranscriptEvent[] {
           timestamp: data.timestamp || data.ts,
           type: eventType === 'turn.failed' ? 'error' : 'message',
           role: 'system',
-          content: eventType === 'turn.failed' 
-            ? (data.error?.message || `Turn failed`) 
-            : eventType,
+          content: eventType === 'turn.failed' ? data.error?.message || `Turn failed` : eventType,
           raw: data,
-        });
-        break;
+        })
+        break
       }
 
       case 'response.created':
@@ -200,9 +198,9 @@ function parseCodexLine(line: string): TranscriptEvent[] {
             type: 'error',
             content: data.error?.message || 'Response failed',
             raw: data,
-          });
+          })
         }
-        break;
+        break
       }
 
       case 'output_text.delta':
@@ -215,18 +213,18 @@ function parseCodexLine(line: string): TranscriptEvent[] {
             role: 'assistant',
             content: data.text || data.delta,
             raw: data,
-          });
+          })
         }
-        break;
+        break
       }
 
       // Codex item events (item.started, item.completed)
       case 'item.started':
       case 'item.completed': {
-        const item = data.item;
-        if (!item) break;
+        const item = data.item
+        if (!item) break
 
-        const itemType = item.type;
+        const itemType = item.type
 
         switch (itemType) {
           case 'reasoning': {
@@ -236,8 +234,8 @@ function parseCodexLine(line: string): TranscriptEvent[] {
               type: 'thinking',
               content: item.text || item.content,
               raw: data,
-            });
-            break;
+            })
+            break
           }
 
           case 'command_execution': {
@@ -255,7 +253,7 @@ function parseCodexLine(line: string): TranscriptEvent[] {
                   },
                 },
                 raw: data,
-              });
+              })
             } else {
               // item.completed
               events.push({
@@ -271,9 +269,9 @@ function parseCodexLine(line: string): TranscriptEvent[] {
                   success: item.status === 'completed' && (item.exit_code === 0 || item.exit_code === undefined),
                 },
                 raw: data,
-              });
+              })
             }
-            break;
+            break
           }
 
           case 'agent_message': {
@@ -284,11 +282,11 @@ function parseCodexLine(line: string): TranscriptEvent[] {
               role: 'assistant',
               content: item.text || item.content || item.message,
               raw: data,
-            });
-            break;
+            })
+            break
           }
         }
-        break;
+        break
       }
 
       default: {
@@ -300,7 +298,7 @@ function parseCodexLine(line: string): TranscriptEvent[] {
             role: data.role,
             content: data.content || data.text,
             raw: data,
-          });
+          })
         } else if (data.function || data.tool) {
           // Looks like a tool call or result
           if (data.result !== undefined || data.output !== undefined) {
@@ -314,9 +312,9 @@ function parseCodexLine(line: string): TranscriptEvent[] {
                 success: !data.error,
               },
               raw: data,
-            });
+            })
           } else {
-            const name = data.function?.name || data.function || data.tool;
+            const name = data.function?.name || data.function || data.tool
             events.push({
               timestamp: data.timestamp || data.ts,
               type: 'tool_call',
@@ -326,7 +324,7 @@ function parseCodexLine(line: string): TranscriptEvent[] {
                 args: data.arguments || data.input || {},
               },
               raw: data,
-            });
+            })
           }
         }
       }
@@ -335,60 +333,60 @@ function parseCodexLine(line: string): TranscriptEvent[] {
     // Skip unparseable lines
   }
 
-  return events;
+  return events
 }
 
 /**
  * Parse Codex JSONL transcript into events.
  */
 export function parseCodexTranscript(raw: string): {
-  events: TranscriptEvent[];
-  errors: string[];
+  events: TranscriptEvent[]
+  errors: string[]
 } {
-  const events: TranscriptEvent[] = [];
-  const errors: string[] = [];
+  const events: TranscriptEvent[] = []
+  const errors: string[] = []
 
-  const lines = raw.split('\n').filter((line) => line.trim());
+  const lines = raw.split('\n').filter((line) => line.trim())
 
   for (const line of lines) {
     try {
-      const lineEvents = parseCodexLine(line);
-      events.push(...lineEvents);
+      const lineEvents = parseCodexLine(line)
+      events.push(...lineEvents)
     } catch (e) {
-      errors.push(`Failed to parse line: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Failed to parse line: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
   // Post-process to extract additional metadata
   for (const event of events) {
     if (event.type === 'tool_call' && event.tool) {
-      const args = event.tool.args || {};
+      const args = event.tool.args || {}
 
       // Extract file paths for file operations
       if (['file_read', 'file_write', 'file_edit'].includes(event.tool.name)) {
-        const path = extractFilePath(args);
+        const path = extractFilePath(args)
         if (path) {
-          event.tool.args = { ...args, _extractedPath: path };
+          event.tool.args = { ...args, _extractedPath: path }
         }
       }
 
       // Extract URLs for web fetches
       if (event.tool.name === 'web_fetch') {
-        const url = extractUrl(args);
+        const url = extractUrl(args)
         if (url) {
-          event.tool.args = { ...args, _extractedUrl: url };
+          event.tool.args = { ...args, _extractedUrl: url }
         }
       }
 
       // Extract commands for shell operations
       if (event.tool.name === 'shell') {
-        const command = extractCommand(args);
+        const command = extractCommand(args)
         if (command) {
-          event.tool.args = { ...args, _extractedCommand: command };
+          event.tool.args = { ...args, _extractedCommand: command }
         }
       }
     }
   }
 
-  return { events, errors };
+  return { events, errors }
 }

@@ -3,49 +3,43 @@
  * Uses direct Google Gemini API access.
  */
 
-import type { Agent, AgentRunOptions, AgentRunResult } from './types.js';
-import type { ModelTier } from '../types.js';
+import type { DockerSandboxManager } from '../docker-sandbox.js'
+import { collectLocalFiles, createSandbox, type SandboxManager, splitTestFiles, verifyNoTestFiles } from '../sandbox.js'
+import type { ModelTier } from '../types.js'
 import {
-  createSandbox,
-  collectLocalFiles,
-  splitTestFiles,
-  verifyNoTestFiles,
-  type SandboxManager,
-} from '../sandbox.js';
-import type { DockerSandboxManager } from '../docker-sandbox.js';
-import {
-  runValidation,
   captureGeneratedFiles,
   createVitestConfig,
   GEMINI_DIRECT,
   initGitAndCommit,
   injectTranscriptContext,
-} from './shared.js';
+  runValidation,
+} from './shared.js'
+import type { Agent, AgentRunOptions, AgentRunResult } from './types.js'
 
 /** Union type for sandbox implementations */
-type AnySandbox = SandboxManager | DockerSandboxManager;
+type AnySandbox = SandboxManager | DockerSandboxManager
 
 /**
  * Extract transcript from Gemini stream-json output.
  * When run with --output-format stream-json, Gemini outputs JSONL (newline-delimited JSON).
  */
 function extractTranscriptFromOutput(output: string): string | undefined {
-  if (!output || !output.trim()) {
-    return undefined;
+  if (!output?.trim()) {
+    return undefined
   }
 
   // The --output-format stream-json output contains JSON events, one per line
   // Filter to only include lines that look like JSON objects
-  const lines = output.split('\n').filter(line => {
-    const trimmed = line.trim();
-    return trimmed.startsWith('{') && trimmed.endsWith('}');
-  });
+  const lines = output.split('\n').filter((line) => {
+    const trimmed = line.trim()
+    return trimmed.startsWith('{') && trimmed.endsWith('}')
+  })
 
   if (lines.length === 0) {
-    return undefined;
+    return undefined
   }
 
-  return lines.join('\n');
+  return lines.join('\n')
 }
 
 /**
@@ -57,29 +51,29 @@ export function createGeminiAgent(): Agent {
     displayName: 'Gemini CLI',
 
     getApiKeyEnvVar(): string {
-      return GEMINI_DIRECT.apiKeyEnvVar;
+      return GEMINI_DIRECT.apiKeyEnvVar
     },
 
     getDefaultModel(): ModelTier {
-      return 'gemini-3-pro-preview';
+      return 'gemini-3-pro-preview'
     },
 
     async run(fixturePath: string, options: AgentRunOptions): Promise<AgentRunResult> {
-      const startTime = Date.now();
-      let sandbox: AnySandbox | null = null;
-      let agentOutput = '';
-      let transcript: string | undefined;
-      let aborted = false;
-      let sandboxStopped = false;
+      const startTime = Date.now()
+      let sandbox: AnySandbox | null = null
+      let agentOutput = ''
+      let transcript: string | undefined
+      let aborted = false
+      let sandboxStopped = false
 
       // Handle abort signal
       const abortHandler = () => {
-        aborted = true;
+        aborted = true
         if (sandbox && !sandboxStopped) {
-          sandboxStopped = true;
-          sandbox.stop().catch(() => {});
+          sandboxStopped = true
+          sandbox.stop().catch(() => {})
         }
-      };
+      }
 
       if (options.signal) {
         if (options.signal.aborted) {
@@ -88,15 +82,15 @@ export function createGeminiAgent(): Agent {
             output: '',
             error: 'Aborted before start',
             duration: 0,
-          };
+          }
         }
-        options.signal.addEventListener('abort', abortHandler);
+        options.signal.addEventListener('abort', abortHandler)
       }
 
       try {
         // Collect files from fixture
-        const allFiles = await collectLocalFiles(fixturePath);
-        const { workspaceFiles, testFiles } = splitTestFiles(allFiles);
+        const allFiles = await collectLocalFiles(fixturePath)
+        const { workspaceFiles, testFiles } = splitTestFiles(allFiles)
 
         // Check for abort before expensive operations
         if (aborted) {
@@ -105,7 +99,7 @@ export function createGeminiAgent(): Agent {
             output: '',
             error: 'Aborted',
             duration: Date.now() - startTime,
-          };
+          }
         }
 
         // Create sandbox
@@ -113,7 +107,7 @@ export function createGeminiAgent(): Agent {
           timeout: options.timeout,
           runtime: 'node24',
           backend: options.sandbox,
-        });
+        })
 
         // Check for abort after sandbox creation (abort may have fired during create)
         if (aborted) {
@@ -123,41 +117,37 @@ export function createGeminiAgent(): Agent {
             error: 'Aborted',
             duration: Date.now() - startTime,
             sandboxId: sandbox.sandboxId,
-          };
+          }
         }
 
         // Upload workspace files (excluding tests)
-        await sandbox.uploadFiles(workspaceFiles);
+        await sandbox.uploadFiles(workspaceFiles)
 
-        await initGitAndCommit(sandbox);
+        await initGitAndCommit(sandbox)
 
         // Run setup function if provided
         if (options.setup) {
-          await options.setup(sandbox);
+          await options.setup(sandbox)
         }
 
         // Install dependencies
-        let installResult = await sandbox.runCommand('npm', ['install']);
+        let installResult = await sandbox.runCommand('npm', ['install'])
         if (installResult.exitCode !== 0) {
-          installResult = await sandbox.runCommand('npm', ['install']);
+          installResult = await sandbox.runCommand('npm', ['install'])
         }
         if (installResult.exitCode !== 0) {
-          const output = (installResult.stdout + installResult.stderr).trim().split('\n').slice(-10).join('\n');
-          throw new Error(`npm install failed (exit code ${installResult.exitCode}):\n${output}`);
+          const output = (installResult.stdout + installResult.stderr).trim().split('\n').slice(-10).join('\n')
+          throw new Error(`npm install failed (exit code ${installResult.exitCode}):\n${output}`)
         }
 
         // Install Gemini CLI globally
-        const cliInstall = await sandbox.runCommand('npm', [
-          'install',
-          '-g',
-          '@google/gemini-cli',
-        ]);
+        const cliInstall = await sandbox.runCommand('npm', ['install', '-g', '@google/gemini-cli'])
         if (cliInstall.exitCode !== 0) {
-          throw new Error(`Gemini CLI install failed: ${cliInstall.stderr}`);
+          throw new Error(`Gemini CLI install failed: ${cliInstall.stderr}`)
         }
 
         // Verify no test files in sandbox
-        await verifyNoTestFiles(sandbox);
+        await verifyNoTestFiles(sandbox)
 
         // Run Gemini CLI with direct API access
         // Using stream-json format for detailed event transcript (similar to Codex's --json)
@@ -177,15 +167,15 @@ export function createGeminiAgent(): Agent {
             env: {
               [GEMINI_DIRECT.apiKeyEnvVar]: options.apiKey,
             },
-          }
-        );
+          },
+        )
 
-        agentOutput = geminiResult.stdout + geminiResult.stderr;
-        transcript = extractTranscriptFromOutput(agentOutput);
+        agentOutput = geminiResult.stdout + geminiResult.stderr
+        transcript = extractTranscriptFromOutput(agentOutput)
 
         if (geminiResult.exitCode !== 0) {
           // Extract meaningful error from output (last few lines usually contain the error)
-          const errorLines = agentOutput.trim().split('\n').slice(-5).join('\n');
+          const errorLines = agentOutput.trim().split('\n').slice(-5).join('\n')
           return {
             success: false,
             output: agentOutput,
@@ -193,23 +183,23 @@ export function createGeminiAgent(): Agent {
             error: errorLines || `Gemini CLI exited with code ${geminiResult.exitCode}`,
             duration: Date.now() - startTime,
             sandboxId: sandbox.sandboxId,
-          };
+          }
         }
 
         // Upload test files for validation
-        await sandbox.uploadFiles(testFiles);
+        await sandbox.uploadFiles(testFiles)
 
         // Create vitest config for EVAL.ts/tsx
-        await createVitestConfig(sandbox);
+        await createVitestConfig(sandbox)
 
         // Inject transcript context so EVAL.ts tests can assert on agent behavior
-        await injectTranscriptContext(sandbox, transcript, 'gemini', options.model);
+        await injectTranscriptContext(sandbox, transcript, 'gemini', options.model)
 
         // Run validation scripts
-        const validationResults = await runValidation(sandbox, options.scripts ?? []);
+        const validationResults = await runValidation(sandbox, options.scripts ?? [])
 
         // Capture generated files
-        const { generatedFiles, deletedFiles } = await captureGeneratedFiles(sandbox);
+        const { generatedFiles, deletedFiles } = await captureGeneratedFiles(sandbox)
 
         return {
           success: validationResults.allPassed,
@@ -221,7 +211,7 @@ export function createGeminiAgent(): Agent {
           sandboxId: sandbox.sandboxId,
           generatedFiles,
           deletedFiles,
-        };
+        }
       } catch (error) {
         // Check if this was an abort
         if (aborted) {
@@ -232,7 +222,7 @@ export function createGeminiAgent(): Agent {
             error: 'Aborted',
             duration: Date.now() - startTime,
             sandboxId: sandbox?.sandboxId,
-          };
+          }
         }
         return {
           success: false,
@@ -241,17 +231,17 @@ export function createGeminiAgent(): Agent {
           error: error instanceof Error ? error.message : String(error),
           duration: Date.now() - startTime,
           sandboxId: sandbox?.sandboxId,
-        };
+        }
       } finally {
         // Clean up abort listener
         if (options.signal) {
-          options.signal.removeEventListener('abort', abortHandler);
+          options.signal.removeEventListener('abort', abortHandler)
         }
         if (sandbox && !sandboxStopped) {
-          sandboxStopped = true;
-          await sandbox.stop();
+          sandboxStopped = true
+          await sandbox.stop()
         }
       }
     },
-  };
+  }
 }

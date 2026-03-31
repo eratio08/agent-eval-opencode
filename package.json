@@ -1,19 +1,20 @@
 {
-  "private": true,
-  "workspaces": ["packages/*"],
-  "scripts": {
-    "build": "npm run build -w packages/agent-eval",
-    "build:agent-eval": "npm run build -w packages/agent-eval",
-    "test": "npm run test -w packages/agent-eval",
-    "test:watch": "npm run test:watch -w packages/agent-eval",
-    "test:integration": "npm run test:integration -w packages/agent-eval",
-    "lint": "npm run lint -w packages/agent-eval",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "release": "npm run build && changeset publish"
-  },
-  "devDependencies": {
-    "@changesets/changelog-github": "^0.5.2",
-    "@changesets/cli": "^2.29.8"
-  }
+	"private": true,
+	"packageManager": "pnpm@10.33.0",
+	"scripts": {
+		"build": "pnpm --filter agent-eval-opencode build",
+		"build:agent-eval": "pnpm --filter agent-eval-opencode build",
+		"test": "pnpm --filter agent-eval-opencode test",
+		"test:watch": "pnpm --filter agent-eval-opencode test:watch",
+		"test:integration": "pnpm --filter agent-eval-opencode test:integration",
+		"lint": "pnpm --filter agent-eval-opencode lint",
+		"changeset": "changeset",
+		"version": "changeset version",
+		"release": "pnpm run build && changeset publish"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.10",
+		"@changesets/changelog-github": "^0.5.2",
+		"@changesets/cli": "^2.29.8"
+	}
 }

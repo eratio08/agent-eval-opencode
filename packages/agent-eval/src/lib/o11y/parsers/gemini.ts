@@ -11,7 +11,7 @@
  *    - Timestamps: ISO strings
  */
 
-import type { TranscriptEvent, ToolName } from '../types.js';
+import type { ToolName, TranscriptEvent } from '../types.js'
 
 /**
  * Map Gemini tool names to canonical names.
@@ -39,9 +39,9 @@ function normalizeToolName(name: string): ToolName {
     web_search: 'web_search',
     fetch: 'web_fetch',
     web_fetch: 'web_fetch',
-  };
+  }
 
-  return toolMap[name.toLowerCase()] || 'unknown';
+  return toolMap[name.toLowerCase()] || 'unknown'
 }
 
 /**
@@ -49,27 +49,25 @@ function normalizeToolName(name: string): ToolName {
  * Handles epoch milliseconds (number) and ISO strings.
  */
 function toISO(ts: unknown): string | undefined {
-  if (typeof ts === 'number') return new Date(ts).toISOString();
-  if (typeof ts === 'string') return ts;
-  return undefined;
+  if (typeof ts === 'number') return new Date(ts).toISOString()
+  if (typeof ts === 'string') return ts
+  return undefined
 }
 
 /**
  * Extract file path from tool arguments.
  */
 function extractFilePath(args: Record<string, unknown>): string | undefined {
-  return (args.path || args.file_path || args.filePath || args.file || args.filename) as
-    | string
-    | undefined;
+  return (args.path || args.file_path || args.filePath || args.file || args.filename) as string | undefined
 }
 
 /**
  * Extract command from tool arguments.
  */
 function extractCommand(args: Record<string, unknown>): string | undefined {
-  if (typeof args.command === 'string') return args.command;
-  if (typeof args.cmd === 'string') return args.cmd;
-  return undefined;
+  if (typeof args.command === 'string') return args.command
+  if (typeof args.cmd === 'string') return args.cmd
+  return undefined
 }
 
 /**
@@ -77,20 +75,20 @@ function extractCommand(args: Record<string, unknown>): string | undefined {
  * Handles both CLI and direct-API formats.
  */
 function parseGeminiLine(line: string): TranscriptEvent[] {
-  const events: TranscriptEvent[] = [];
+  const events: TranscriptEvent[] = []
 
   try {
-    const data = JSON.parse(line);
-    const eventType = data.type;
+    const data = JSON.parse(line)
+    const eventType = data.type
 
     // --- CLI format: tool_use with part.tool / part.state ---
     if (eventType === 'tool_use' && data.part?.tool) {
-      const part = data.part as Record<string, unknown>;
-      const state = part.state as Record<string, unknown> | undefined;
-      const name = part.tool as string;
-      const args = (state?.input as Record<string, unknown>) || {};
-      const output = state?.output;
-      const status = state?.status as string | undefined;
+      const part = data.part as Record<string, unknown>
+      const state = part.state as Record<string, unknown> | undefined
+      const name = part.tool as string
+      const args = (state?.input as Record<string, unknown>) || {}
+      const output = state?.output
+      const status = state?.status as string | undefined
 
       events.push({
         timestamp: toISO(data.timestamp),
@@ -101,15 +99,13 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
           args,
         },
         raw: data,
-      });
+      })
 
       if (status === 'completed' && output !== undefined) {
-        const metadata = state?.metadata as Record<string, unknown> | undefined;
-        const exitCode = metadata?.exit as number | undefined;
-        const isShell = normalizeToolName(name) === 'shell';
-        const success = isShell
-          ? exitCode === 0 || exitCode === undefined
-          : status === 'completed' && !state?.error;
+        const metadata = state?.metadata as Record<string, unknown> | undefined
+        const exitCode = metadata?.exit as number | undefined
+        const isShell = normalizeToolName(name) === 'shell'
+        const success = isShell ? exitCode === 0 || exitCode === undefined : status === 'completed' && !state?.error
 
         events.push({
           timestamp: toISO(data.timestamp),
@@ -121,15 +117,15 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
             success,
           },
           raw: state,
-        });
+        })
       }
-      return events;
+      return events
     }
 
     // --- Direct-API format: tool_use with tool_name / parameters ---
     if (eventType === 'tool_use' && data.tool_name) {
-      const name = data.tool_name as string;
-      const args = (data.parameters as Record<string, unknown>) || {};
+      const name = data.tool_name as string
+      const args = (data.parameters as Record<string, unknown>) || {}
 
       events.push({
         timestamp: toISO(data.timestamp),
@@ -140,17 +136,17 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
           args,
         },
         raw: data,
-      });
-      return events;
+      })
+      return events
     }
 
     // --- Direct-API format: separate tool_result event ---
     if (eventType === 'tool_result') {
-      const toolId = data.tool_id as string | undefined;
+      const toolId = data.tool_id as string | undefined
       // Infer original tool name from tool_id prefix (e.g. "read_file-1770...")
-      const originalName = toolId?.split('-')[0] || 'unknown';
-      const status = data.status as string | undefined;
-      const hasError = status === 'error' || !!data.error;
+      const originalName = toolId?.split('-')[0] || 'unknown'
+      const status = data.status as string | undefined
+      const hasError = status === 'error' || !!data.error
 
       events.push({
         timestamp: toISO(data.timestamp),
@@ -162,13 +158,13 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
           success: !hasError,
         },
         raw: data,
-      });
-      return events;
+      })
+      return events
     }
 
     // --- CLI format: text with part.text ---
     if (eventType === 'text' && data.part?.text) {
-      const text = data.part.text as string;
+      const text = data.part.text as string
       if (text.trim()) {
         events.push({
           timestamp: toISO(data.timestamp),
@@ -176,15 +172,15 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
           role: 'assistant',
           content: text,
           raw: data,
-        });
+        })
       }
-      return events;
+      return events
     }
 
     // --- Direct-API format: message with role/content ---
     if (eventType === 'message') {
-      const role = data.role as string | undefined;
-      const content = data.content as string | undefined;
+      const role = data.role as string | undefined
+      const content = data.content as string | undefined
       if (role && content) {
         events.push({
           timestamp: toISO(data.timestamp),
@@ -192,9 +188,9 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
           role: role as 'user' | 'assistant' | 'system',
           content,
           raw: { ...data, _delta: !!data.delta },
-        });
+        })
       }
-      return events;
+      return events
     }
 
     // --- Metadata events — skip ---
@@ -203,70 +199,70 @@ function parseGeminiLine(line: string): TranscriptEvent[] {
     // Skip unparseable lines
   }
 
-  return events;
+  return events
 }
 
 /**
  * Parse Gemini JSONL transcript into normalized events.
  */
 export function parseGeminiTranscript(raw: string): {
-  events: TranscriptEvent[];
-  errors: string[];
+  events: TranscriptEvent[]
+  errors: string[]
 } {
-  const events: TranscriptEvent[] = [];
-  const errors: string[] = [];
+  const events: TranscriptEvent[] = []
+  const errors: string[] = []
 
-  const lines = raw.split('\n').filter((line) => line.trim());
+  const lines = raw.split('\n').filter((line) => line.trim())
 
   for (const line of lines) {
     try {
-      const lineEvents = parseGeminiLine(line);
-      events.push(...lineEvents);
+      const lineEvents = parseGeminiLine(line)
+      events.push(...lineEvents)
     } catch (e) {
-      errors.push(`Failed to parse line: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Failed to parse line: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
   // Post-process: aggregate contiguous assistant delta messages into single events.
   // This avoids inflating turn counts while still counting actual turns.
-  const aggregated: TranscriptEvent[] = [];
+  const aggregated: TranscriptEvent[] = []
   for (const event of events) {
-    const isDelta = (event.raw as Record<string, unknown>)?._delta === true;
+    const isDelta = (event.raw as Record<string, unknown>)?._delta === true
     if (event.type === 'message' && event.role === 'assistant' && isDelta) {
-      const prev = aggregated[aggregated.length - 1];
+      const prev = aggregated[aggregated.length - 1]
       if (
         prev?.type === 'message' &&
         prev.role === 'assistant' &&
         (prev.raw as Record<string, unknown>)?._delta === true
       ) {
         // Merge into previous delta message
-        prev.content = (prev.content || '') + (event.content || '');
-        continue;
+        prev.content = (prev.content || '') + (event.content || '')
+        continue
       }
     }
-    aggregated.push(event);
+    aggregated.push(event)
   }
 
   // Post-process: extract metadata into tool args
   for (const event of aggregated) {
     if (event.type === 'tool_call' && event.tool) {
-      const args = event.tool.args || {};
+      const args = event.tool.args || {}
 
       if (['file_read', 'file_write', 'file_edit'].includes(event.tool.name)) {
-        const path = extractFilePath(args);
+        const path = extractFilePath(args)
         if (path) {
-          event.tool.args = { ...args, _extractedPath: path };
+          event.tool.args = { ...args, _extractedPath: path }
         }
       }
 
       if (event.tool.name === 'shell') {
-        const command = extractCommand(args);
+        const command = extractCommand(args)
         if (command) {
-          event.tool.args = { ...args, _extractedCommand: command };
+          event.tool.args = { ...args, _extractedCommand: command }
         }
       }
     }
   }
 
-  return { events: aggregated, errors };
+  return { events: aggregated, errors }
 }

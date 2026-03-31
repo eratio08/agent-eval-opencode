@@ -7,15 +7,15 @@
  * - Remove empty timestamp directories
  */
 
-import { readdirSync, rmSync, existsSync, readFileSync, statSync } from 'fs';
-import { join } from 'path';
-import { isClassifierEnabled, isNonModelFailure } from './classifier.js';
+import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { isClassifierEnabled, isNonModelFailure } from './classifier.js'
 
 interface HousekeepingStats {
-  removedDuplicates: number;
-  removedIncomplete: number;
-  removedNonModelFailures: number;
-  removedEmptyDirs: number;
+  removedDuplicates: number
+  removedIncomplete: number
+  removedNonModelFailures: number
+  removedEmptyDirs: number
 }
 
 /**
@@ -25,106 +25,102 @@ interface HousekeepingStats {
  * at least one transcript), removes older duplicates and incomplete results.
  * Removes empty timestamp directories afterward.
  */
-export function housekeep(
-  resultsDir: string,
-  experimentName: string,
-  options?: { dry?: boolean }
-): HousekeepingStats {
+export function housekeep(resultsDir: string, experimentName: string, options?: { dry?: boolean }): HousekeepingStats {
   const stats: HousekeepingStats = {
     removedDuplicates: 0,
     removedIncomplete: 0,
     removedNonModelFailures: 0,
     removedEmptyDirs: 0,
-  };
+  }
 
-  const experimentDir = join(resultsDir, experimentName);
-  if (!existsSync(experimentDir)) return stats;
+  const experimentDir = join(resultsDir, experimentName)
+  if (!existsSync(experimentDir)) return stats
 
   // Get all timestamps sorted newest first
-  let timestamps: string[];
+  let timestamps: string[]
   try {
     timestamps = readdirSync(experimentDir)
       .filter((t) => !t.startsWith('.'))
       .filter((t) => {
         try {
-          return statSync(join(experimentDir, t)).isDirectory();
+          return statSync(join(experimentDir, t)).isDirectory()
         } catch {
-          return false;
+          return false
         }
       })
       .sort()
-      .reverse();
+      .reverse()
   } catch {
-    return stats;
+    return stats
   }
 
   // Track which (eval, fingerprint) pairs we've already seen (newest wins).
   // Results with different fingerprints (e.g. smoke vs full run) are not
   // duplicates of each other and should coexist.
-  const seenEvals = new Set<string>();
+  const seenEvals = new Set<string>()
 
   for (const timestamp of timestamps) {
-    const tsDir = join(experimentDir, timestamp);
+    const tsDir = join(experimentDir, timestamp)
 
-    let evalDirs: string[];
+    let evalDirs: string[]
     try {
-      evalDirs = readdirSync(tsDir).filter((d) => !d.startsWith('.'));
+      evalDirs = readdirSync(tsDir).filter((d) => !d.startsWith('.'))
     } catch {
-      continue;
+      continue
     }
 
     for (const evalDir of evalDirs) {
-      const evalResultDir = join(tsDir, evalDir);
+      const evalResultDir = join(tsDir, evalDir)
 
-      if (!statSync(evalResultDir).isDirectory()) continue;
+      if (!statSync(evalResultDir).isDirectory()) continue
 
       // Read fingerprint to distinguish different configs (e.g. smoke vs full)
-      const fingerprint = readFingerprint(evalResultDir);
-      const dedupeKey = fingerprint ? `${evalDir}:${fingerprint}` : evalDir;
+      const fingerprint = readFingerprint(evalResultDir)
+      const dedupeKey = fingerprint ? `${evalDir}:${fingerprint}` : evalDir
 
       if (seenEvals.has(dedupeKey)) {
         // Older duplicate with same fingerprint — remove
         if (!options?.dry) {
-          rmSync(evalResultDir, { recursive: true });
+          rmSync(evalResultDir, { recursive: true })
         }
-        stats.removedDuplicates++;
-        continue;
+        stats.removedDuplicates++
+        continue
       }
 
       // Check if this result is complete
       // Note: non-model failures are only cleaned up if the classifier is enabled
-      const isNonModel = isClassifierEnabled() && isNonModelFailure(evalResultDir);
+      const isNonModel = isClassifierEnabled() && isNonModelFailure(evalResultDir)
       if (isComplete(evalResultDir) && !isSmoke(evalResultDir) && !isNonModel) {
-        seenEvals.add(dedupeKey);
+        seenEvals.add(dedupeKey)
       } else if (isNonModel) {
         if (!options?.dry) {
-          rmSync(evalResultDir, { recursive: true });
+          rmSync(evalResultDir, { recursive: true })
         }
-        stats.removedNonModelFailures++;
+        stats.removedNonModelFailures++
       } else {
         // Incomplete or smoke — remove
         if (!options?.dry) {
-          rmSync(evalResultDir, { recursive: true });
+          rmSync(evalResultDir, { recursive: true })
         }
-        stats.removedIncomplete++;
+        stats.removedIncomplete++
       }
     }
 
     // Check if timestamp dir is now empty
     try {
-      const remaining = readdirSync(tsDir).filter((d) => !d.startsWith('.'));
+      const remaining = readdirSync(tsDir).filter((d) => !d.startsWith('.'))
       if (remaining.length === 0) {
         if (!options?.dry) {
-          rmSync(tsDir, { recursive: true });
+          rmSync(tsDir, { recursive: true })
         }
-        stats.removedEmptyDirs++;
+        stats.removedEmptyDirs++
       }
     } catch {
       // Directory already removed or inaccessible
     }
   }
 
-  return stats;
+  return stats
 }
 
 /**
@@ -132,10 +128,10 @@ export function housekeep(
  */
 function isSmoke(evalResultDir: string): boolean {
   try {
-    const summary = JSON.parse(readFileSync(join(evalResultDir, 'summary.json'), 'utf-8'));
-    return summary.smoke === true;
+    const summary = JSON.parse(readFileSync(join(evalResultDir, 'summary.json'), 'utf-8'))
+    return summary.smoke === true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -144,10 +140,10 @@ function isSmoke(evalResultDir: string): boolean {
  */
 function readFingerprint(evalResultDir: string): string | undefined {
   try {
-    const summary = JSON.parse(readFileSync(join(evalResultDir, 'summary.json'), 'utf-8'));
-    return summary.fingerprint;
+    const summary = JSON.parse(readFileSync(join(evalResultDir, 'summary.json'), 'utf-8'))
+    return summary.fingerprint
   } catch {
-    return undefined;
+    return undefined
   }
 }
 
@@ -156,32 +152,29 @@ function readFingerprint(evalResultDir: string): string | undefined {
  * Complete means: has summary.json and at least one run with a transcript.
  */
 function isComplete(evalResultDir: string): boolean {
-  const summaryPath = join(evalResultDir, 'summary.json');
-  if (!existsSync(summaryPath)) return false;
+  const summaryPath = join(evalResultDir, 'summary.json')
+  if (!existsSync(summaryPath)) return false
 
   // Check for at least one transcript
   try {
-    const entries = readdirSync(evalResultDir);
+    const entries = readdirSync(evalResultDir)
     for (const entry of entries) {
-      if (!entry.startsWith('run-')) continue;
-      const runDir = join(evalResultDir, entry);
-      if (
-        existsSync(join(runDir, 'transcript-raw.jsonl')) ||
-        existsSync(join(runDir, 'transcript.json'))
-      ) {
-        return true;
+      if (!entry.startsWith('run-')) continue
+      const runDir = join(evalResultDir, entry)
+      if (existsSync(join(runDir, 'transcript-raw.jsonl')) || existsSync(join(runDir, 'transcript.json'))) {
+        return true
       }
     }
   } catch {
-    return false;
+    return false
   }
 
   // No transcript found — but summary.json exists.
   // Still consider complete if summary shows 0% (model produced nothing, which is valid).
   try {
-    const summary = JSON.parse(readFileSync(summaryPath, 'utf-8'));
-    return summary.totalRuns > 0;
+    const summary = JSON.parse(readFileSync(summaryPath, 'utf-8'))
+    return summary.totalRuns > 0
   } catch {
-    return false;
+    return false
   }
 }

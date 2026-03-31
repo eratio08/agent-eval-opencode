@@ -8,7 +8,7 @@
  * - Tool results appear as separate messages with type: "tool_result"
  */
 
-import type { TranscriptEvent, ToolName } from '../types.js';
+import type { ToolName, TranscriptEvent } from '../types.js'
 
 /**
  * Map Claude Code tool names to canonical names.
@@ -59,56 +59,56 @@ function normalizeToolName(name: string): ToolName {
     // Agent/subagent tools
     Task: 'agent_task',
     task: 'agent_task',
-  };
+  }
 
-  return toolMap[name] || 'unknown';
+  return toolMap[name] || 'unknown'
 }
 
 /**
  * Extract file path from tool arguments.
  */
 function extractFilePath(args: Record<string, unknown>): string | undefined {
-  return (args.path || args.file_path || args.filename || args.file) as string | undefined;
+  return (args.path || args.file_path || args.filename || args.file) as string | undefined
 }
 
 /**
  * Extract URL from tool arguments.
  */
 function extractUrl(args: Record<string, unknown>): string | undefined {
-  return (args.url || args.uri || args.href) as string | undefined;
+  return (args.url || args.uri || args.href) as string | undefined
 }
 
 /**
  * Extract command from tool arguments.
  */
 function extractCommand(args: Record<string, unknown>): string | undefined {
-  if (typeof args.command === 'string') return args.command;
-  if (Array.isArray(args.command)) return args.command.join(' ');
-  if (typeof args.cmd === 'string') return args.cmd;
-  return undefined;
+  if (typeof args.command === 'string') return args.command
+  if (Array.isArray(args.command)) return args.command.join(' ')
+  if (typeof args.cmd === 'string') return args.cmd
+  return undefined
 }
 
 /**
  * Parse a single JSONL line from Claude Code transcript.
  */
 function parseClaudeCodeLine(line: string): TranscriptEvent[] {
-  const events: TranscriptEvent[] = [];
+  const events: TranscriptEvent[] = []
 
   try {
-    const data = JSON.parse(line);
+    const data = JSON.parse(line)
 
     // Handle different Claude Code message formats
     if (data.type === 'user' || data.role === 'user') {
       // Check if this is a tool_result message (user message containing tool results)
-      const contentArray = getContentArray(data);
+      const contentArray = getContentArray(data)
       const toolResults = contentArray?.filter(
-        (block: unknown) => (block as Record<string, unknown>).type === 'tool_result'
-      );
-      
+        (block: unknown) => (block as Record<string, unknown>).type === 'tool_result',
+      )
+
       if (toolResults && toolResults.length > 0) {
         // Extract tool results from user message
         for (const result of toolResults) {
-          const r = result as Record<string, unknown>;
+          const r = result as Record<string, unknown>
           events.push({
             timestamp: data.timestamp,
             type: 'tool_result',
@@ -119,7 +119,7 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
               success: !r.is_error && !r.error,
             },
             raw: r,
-          });
+          })
         }
       } else {
         // Regular user message
@@ -129,11 +129,11 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
           role: 'user',
           content: extractContent(data),
           raw: data,
-        });
+        })
       }
     } else if (data.type === 'assistant' || data.role === 'assistant') {
       // Assistant message - may contain text and/or tool_use blocks
-      const content = extractContent(data);
+      const content = extractContent(data)
       if (content) {
         events.push({
           timestamp: data.timestamp,
@@ -141,11 +141,11 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
           role: 'assistant',
           content,
           raw: data,
-        });
+        })
       }
 
       // Extract tool_use blocks
-      const toolUses = extractToolUses(data);
+      const toolUses = extractToolUses(data)
       for (const toolUse of toolUses) {
         events.push({
           timestamp: data.timestamp,
@@ -156,18 +156,18 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
             args: toolUse.input || toolUse.args || {},
           },
           raw: toolUse,
-        });
+        })
       }
 
       // Extract thinking blocks
-      const thinking = extractThinking(data);
+      const thinking = extractThinking(data)
       if (thinking) {
         events.push({
           timestamp: data.timestamp,
           type: 'thinking',
           content: thinking,
           raw: data,
-        });
+        })
       }
     } else if (data.type === 'tool_result' || data.type === 'tool_response') {
       events.push({
@@ -180,7 +180,7 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
           success: !data.is_error && !data.error,
         },
         raw: data,
-      });
+      })
     } else if (data.type === 'system' || data.role === 'system') {
       events.push({
         timestamp: data.timestamp,
@@ -188,20 +188,20 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
         role: 'system',
         content: extractContent(data),
         raw: data,
-      });
+      })
     } else if (data.type === 'error' || data.error) {
       events.push({
         timestamp: data.timestamp,
         type: 'error',
         content: data.error?.message || data.message || JSON.stringify(data.error),
         raw: data,
-      });
+      })
     }
   } catch {
     // Skip unparseable lines
   }
 
-  return events;
+  return events
 }
 
 /**
@@ -211,14 +211,14 @@ function parseClaudeCodeLine(line: string): TranscriptEvent[] {
 function getContentArray(data: Record<string, unknown>): unknown[] | undefined {
   // Direct content array
   if (Array.isArray(data.content)) {
-    return data.content;
+    return data.content
   }
   // Nested message format (real Claude Code format)
-  const message = data.message as Record<string, unknown> | undefined;
+  const message = data.message as Record<string, unknown> | undefined
   if (message && Array.isArray(message.content)) {
-    return message.content;
+    return message.content
   }
-  return undefined;
+  return undefined
 }
 
 /**
@@ -226,13 +226,13 @@ function getContentArray(data: Record<string, unknown>): unknown[] | undefined {
  */
 function getStringContent(data: Record<string, unknown>): string | undefined {
   if (typeof data.content === 'string') {
-    return data.content;
+    return data.content
   }
-  const message = data.message as Record<string, unknown> | undefined;
+  const message = data.message as Record<string, unknown> | undefined
   if (message && typeof message.content === 'string') {
-    return message.content;
+    return message.content
   }
-  return undefined;
+  return undefined
 }
 
 /**
@@ -240,110 +240,110 @@ function getStringContent(data: Record<string, unknown>): string | undefined {
  */
 function extractContent(data: Record<string, unknown>): string | undefined {
   // Check for direct string content
-  const stringContent = getStringContent(data);
+  const stringContent = getStringContent(data)
   if (stringContent) {
-    return stringContent;
+    return stringContent
   }
-  
+
   // Check for content blocks array
-  const contentArray = getContentArray(data);
+  const contentArray = getContentArray(data)
   if (contentArray) {
-    const textBlocks = contentArray.filter(
-      (block: unknown) => (block as Record<string, unknown>).type === 'text'
-    );
+    const textBlocks = contentArray.filter((block: unknown) => (block as Record<string, unknown>).type === 'text')
     if (textBlocks.length > 0) {
-      return textBlocks.map((b: unknown) => (b as Record<string, unknown>).text).join('\n');
+      return textBlocks.map((b: unknown) => (b as Record<string, unknown>).text).join('\n')
     }
   }
-  
+
   if (typeof data.text === 'string') {
-    return data.text;
+    return data.text
   }
   // Note: don't check data.message as string since message is an object in Claude Code format
-  return undefined;
+  return undefined
 }
 
 /**
  * Extract tool_use blocks from assistant messages.
  */
 function extractToolUses(
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): Array<{ name: string; input?: Record<string, unknown>; args?: Record<string, unknown> }> {
   const toolUses: Array<{
-    name: string;
-    input?: Record<string, unknown>;
-    args?: Record<string, unknown>;
-  }> = [];
+    name: string
+    input?: Record<string, unknown>
+    args?: Record<string, unknown>
+  }> = []
 
   // Check content array (handles both direct and nested message format)
-  const contentArray = getContentArray(data);
+  const contentArray = getContentArray(data)
   if (contentArray) {
     for (const block of contentArray) {
-      const b = block as Record<string, unknown>;
+      const b = block as Record<string, unknown>
       if (b.type === 'tool_use') {
         toolUses.push({
           name: b.name as string,
           input: b.input as Record<string, unknown> | undefined,
-        });
+        })
       }
     }
   }
 
   // Also check for tool_calls array format (OpenAI-style)
-  const toolCalls = data.tool_calls || (data.message as Record<string, unknown>)?.tool_calls;
+  const toolCalls = data.tool_calls || (data.message as Record<string, unknown>)?.tool_calls
   if (Array.isArray(toolCalls)) {
     for (const call of toolCalls) {
-      const c = call as Record<string, unknown>;
-      const func = c.function as Record<string, unknown> | undefined;
+      const c = call as Record<string, unknown>
+      const func = c.function as Record<string, unknown> | undefined
       toolUses.push({
         name: (func?.name || c.name) as string,
         args: func?.arguments
           ? JSON.parse(func.arguments as string)
-          : (c.arguments || c.input) as Record<string, unknown> | undefined,
-      });
+          : ((c.arguments || c.input) as Record<string, unknown> | undefined),
+      })
     }
   }
 
-  return toolUses;
+  return toolUses
 }
 
 /**
  * Extract thinking/reasoning content.
  */
 function extractThinking(data: Record<string, unknown>): string | undefined {
-  const contentArray = getContentArray(data);
+  const contentArray = getContentArray(data)
   if (contentArray) {
     const thinkingBlocks = contentArray.filter(
-      (block: unknown) => (block as Record<string, unknown>).type === 'thinking'
-    );
+      (block: unknown) => (block as Record<string, unknown>).type === 'thinking',
+    )
     if (thinkingBlocks.length > 0) {
-      return thinkingBlocks.map((b: unknown) => {
-        const block = b as Record<string, unknown>;
-        return block.thinking || block.text;
-      }).join('\n');
+      return thinkingBlocks
+        .map((b: unknown) => {
+          const block = b as Record<string, unknown>
+          return block.thinking || block.text
+        })
+        .join('\n')
     }
   }
-  return undefined;
+  return undefined
 }
 
 /**
  * Parse Claude Code JSONL transcript into events.
  */
 export function parseClaudeCodeTranscript(raw: string): {
-  events: TranscriptEvent[];
-  errors: string[];
+  events: TranscriptEvent[]
+  errors: string[]
 } {
-  const events: TranscriptEvent[] = [];
-  const errors: string[] = [];
+  const events: TranscriptEvent[] = []
+  const errors: string[] = []
 
-  const lines = raw.split('\n').filter((line) => line.trim());
+  const lines = raw.split('\n').filter((line) => line.trim())
 
   for (const line of lines) {
     try {
-      const lineEvents = parseClaudeCodeLine(line);
-      events.push(...lineEvents);
+      const lineEvents = parseClaudeCodeLine(line)
+      events.push(...lineEvents)
     } catch (e) {
-      errors.push(`Failed to parse line: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Failed to parse line: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -351,33 +351,33 @@ export function parseClaudeCodeTranscript(raw: string): {
   // and extract additional metadata
   for (const event of events) {
     if (event.type === 'tool_call' && event.tool) {
-      const args = event.tool.args || {};
+      const args = event.tool.args || {}
 
       // Extract file paths for file operations
       if (['file_read', 'file_write', 'file_edit'].includes(event.tool.name)) {
-        const path = extractFilePath(args);
+        const path = extractFilePath(args)
         if (path) {
-          event.tool.args = { ...args, _extractedPath: path };
+          event.tool.args = { ...args, _extractedPath: path }
         }
       }
 
       // Extract URLs for web fetches
       if (event.tool.name === 'web_fetch') {
-        const url = extractUrl(args);
+        const url = extractUrl(args)
         if (url) {
-          event.tool.args = { ...args, _extractedUrl: url };
+          event.tool.args = { ...args, _extractedUrl: url }
         }
       }
 
       // Extract commands for shell operations
       if (event.tool.name === 'shell') {
-        const command = extractCommand(args);
+        const command = extractCommand(args)
         if (command) {
-          event.tool.args = { ...args, _extractedCommand: command };
+          event.tool.args = { ...args, _extractedCommand: command }
         }
       }
     }
   }
 
-  return { events, errors };
+  return { events, errors }
 }

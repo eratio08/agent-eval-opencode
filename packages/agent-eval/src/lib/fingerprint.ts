@@ -5,22 +5,22 @@
  * If the fingerprint matches and the result is valid, the eval can be skipped.
  */
 
-import { createHash } from 'crypto';
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
-import type { RunnableExperimentConfig } from './types.js';
+import { createHash } from 'node:crypto'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import type { RunnableExperimentConfig } from './types.js'
 
 /**
  * Fields from the config that affect eval results.
  * Functions (setup, editPrompt) can't be hashed — documented as a limitation.
  */
 interface FingerprintableConfig {
-  agent: string;
-  model: string;
-  scripts: string[];
-  timeout: number;
-  earlyExit: boolean;
-  runs: number;
+  agent: string
+  model: string
+  scripts: string[]
+  timeout: number
+  earlyExit: boolean
+  runs: number
 }
 
 /**
@@ -28,23 +28,23 @@ interface FingerprintableConfig {
  * Skips node_modules and .git.
  */
 function collectFiles(dir: string, basePath: string = ''): Array<{ relativePath: string; content: string }> {
-  const files: Array<{ relativePath: string; content: string }> = [];
-  const entries = readdirSync(dir).sort();
+  const files: Array<{ relativePath: string; content: string }> = []
+  const entries = readdirSync(dir).sort()
 
   for (const entry of entries) {
-    if (entry === 'node_modules' || entry === '.git') continue;
-    const fullPath = join(dir, entry);
-    const relativePath = basePath ? `${basePath}/${entry}` : entry;
-    const stat = statSync(fullPath);
+    if (entry === 'node_modules' || entry === '.git') continue
+    const fullPath = join(dir, entry)
+    const relativePath = basePath ? `${basePath}/${entry}` : entry
+    const stat = statSync(fullPath)
 
     if (stat.isDirectory()) {
-      files.push(...collectFiles(fullPath, relativePath));
+      files.push(...collectFiles(fullPath, relativePath))
     } else {
-      files.push({ relativePath, content: readFileSync(fullPath, 'utf-8') });
+      files.push({ relativePath, content: readFileSync(fullPath, 'utf-8') })
     }
   }
 
-  return files;
+  return files
 }
 
 /**
@@ -54,14 +54,14 @@ function collectFiles(dir: string, basePath: string = ''): Array<{ relativePath:
  * Returns a hex SHA-256 digest.
  */
 export function computeFingerprint(evalPath: string, config: RunnableExperimentConfig): string {
-  const hash = createHash('sha256');
+  const hash = createHash('sha256')
 
   // Hash all files in the eval directory (sorted for determinism)
-  const files = collectFiles(evalPath);
+  const files = collectFiles(evalPath)
   for (const file of files) {
-    hash.update(`file:${file.relativePath}\n`);
-    hash.update(file.content);
-    hash.update('\0');
+    hash.update(`file:${file.relativePath}\n`)
+    hash.update(file.content)
+    hash.update('\0')
   }
 
   // Hash config fields that affect results
@@ -72,8 +72,8 @@ export function computeFingerprint(evalPath: string, config: RunnableExperimentC
     timeout: config.timeout,
     earlyExit: config.earlyExit,
     runs: config.runs,
-  };
-  hash.update(`config:${JSON.stringify(configForHash)}`);
+  }
+  hash.update(`config:${JSON.stringify(configForHash)}`)
 
-  return hash.digest('hex');
+  return hash.digest('hex')
 }

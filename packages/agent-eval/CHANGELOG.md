@@ -1,5 +1,11 @@
 # @vercel/agent-eval
 
+## 0.10.0
+
+### Minor Changes
+
+- Add support for local opencode with copilot models
+
 ## 0.9.5
 
 ### Patch Changes

@@ -2,16 +2,16 @@
  * Agent registry for managing available agents.
  */
 
-import type { Agent } from './types.js';
-import type { AgentType } from '../types.js';
+import type { AgentType } from '../types.js'
+import type { Agent } from './types.js'
 
-const agents = new Map<string, Agent>();
+const agents = new Map<string, Agent>()
 
 /**
  * Register an agent in the registry.
  */
 export function registerAgent(agent: Agent): void {
-  agents.set(agent.name, agent);
+  agents.set(agent.name, agent)
 }
 
 /**
@@ -19,24 +19,24 @@ export function registerAgent(agent: Agent): void {
  * @throws Error if agent is not found
  */
 export function getAgent(name: AgentType): Agent {
-  const agent = agents.get(name);
+  const agent = agents.get(name)
   if (!agent) {
-    const available = Array.from(agents.keys()).join(', ');
-    throw new Error(`Unknown agent: ${name}. Available agents: ${available}`);
+    const available = Array.from(agents.keys()).join(', ')
+    throw new Error(`Unknown agent: ${name}. Available agents: ${available}`)
   }
-  return agent;
+  return agent
 }
 
 /**
  * List all registered agents.
  */
 export function listAgents(): string[] {
-  return Array.from(agents.keys());
+  return Array.from(agents.keys())
 }
 
 /**
  * Check if an agent is registered.
  */
 export function hasAgent(name: string): boolean {
-  return agents.has(name);
+  return agents.has(name)
 }
