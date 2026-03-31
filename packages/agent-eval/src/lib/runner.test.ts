@@ -1,6 +1,12 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('./rubric.js', () => ({
+  gradeRunWithRubric: vi.fn(),
+}))
+
 import * as agentsIndex from './agents/index.js'
+import * as rubric from './rubric.js'
 import type { Agent } from './agents/types.js'
 import { runExperiment } from './runner.js'
 import type { EvalFixture, ResolvedExperimentConfig } from './types.js'
@@ -54,6 +60,9 @@ describe('runExperiment', () => {
         earlyExit: false,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -139,6 +148,9 @@ describe('runExperiment', () => {
         earlyExit: true,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -189,6 +201,9 @@ describe('runExperiment', () => {
         earlyExit: true,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -223,7 +238,7 @@ describe('runExperiment', () => {
         run: vi.fn().mockResolvedValue({
           success: true,
           output: 'Agent output',
-          duration: 1000,
+          duration: 6000,
           testResult: { success: true, output: 'Test passed' },
           scriptsResults: {},
         }),
@@ -239,6 +254,9 @@ describe('runExperiment', () => {
         earlyExit: false,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -329,6 +347,9 @@ describe('runExperiment', () => {
         earlyExit: true,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -390,6 +411,9 @@ describe('runExperiment', () => {
         earlyExit: false,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -461,6 +485,9 @@ describe('runExperiment', () => {
         earlyExit: true,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        
       }
 
       const fixtures: EvalFixture[] = [
@@ -524,6 +551,8 @@ describe('runExperiment', () => {
         scripts: ['build', 'lint'],
         timeout: 600,
         setup: mockSetup,
+        copyFiles: 'none',
+        sandbox: 'auto',
       }
 
       const fixtures: EvalFixture[] = [
@@ -551,7 +580,7 @@ describe('runExperiment', () => {
         setup: mockSetup,
         scripts: ['build', 'lint'],
         signal: expect.any(AbortSignal), // Signal always passed for timeout cleanup
-        sandbox: undefined,
+        sandbox: 'auto',
       })
     })
   })
@@ -585,7 +614,10 @@ describe('runExperiment', () => {
         runs: 1,
         earlyExit: false,
         scripts: [],
-        timeout: 0.1, // 100ms in seconds
+        timeout: 0.1,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        // 100ms in seconds
       }
 
       const fixtures: EvalFixture[] = [
@@ -656,7 +688,10 @@ describe('runExperiment', () => {
         runs: 1,
         earlyExit: false,
         scripts: [],
-        timeout: 0.1, // 100ms
+        timeout: 0.1,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        // 100ms
       }
 
       const fixtures: EvalFixture[] = [
@@ -681,6 +716,120 @@ describe('runExperiment', () => {
 
       // Signal should have been aborted on timeout
       expect(signalAborted).toBe(true)
+    })
+  })
+
+  describe('rubric grading', () => {
+    it('fails the overall run when rubric grading fails', async () => {
+      const mockAgent: Agent = {
+        name: 'mock-agent',
+        displayName: 'Mock Agent',
+        getApiKeyEnvVar: () => 'MOCK_API_KEY',
+        getDefaultModel: () => 'mock-model',
+        run: vi.fn().mockResolvedValue({
+          success: true,
+          output: 'Agent output',
+          duration: 1000,
+          testResult: { success: true, output: 'Test passed' },
+          scriptsResults: {},
+        }),
+      }
+
+      vi.spyOn(agentsIndex, 'getAgent').mockReturnValue(mockAgent)
+      vi.spyOn(rubric, 'gradeRunWithRubric').mockResolvedValue({
+        status: 'failed',
+        model: 'github-copilot/claude-opus-4.6',
+        output: { overall_pass: false },
+      })
+
+      const config: ResolvedExperimentConfig = {
+        agent: 'opencode',
+        model: 'github-copilot/claude-opus-4.6',
+        evals: ['test-eval'],
+        runs: 1,
+        earlyExit: false,
+        scripts: [],
+        timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        rubric: {
+          prompt: 'Grade this output',
+          schema: { type: 'object' },
+          passField: 'overall_pass',
+        },
+      }
+
+      const fixtures: EvalFixture[] = [{ name: 'test-eval', path: '/fake/path', prompt: 'Test prompt', isModule: true }]
+
+      const results = await runExperiment({
+        config,
+        fixtures,
+        apiKey: 'test-key',
+        resultsDir: TEST_DIR,
+        experimentName: 'test-experiment',
+      })
+
+      expect(results.evals[0].passedRuns).toBe(0)
+      expect(results.evals[0].deterministic.passedRuns).toBe(1)
+      expect(results.evals[0].rubric?.passedRuns).toBe(0)
+      expect(results.evals[0].runs[0].result.status).toBe('failed')
+      expect(results.evals[0].runs[0].result.rubric?.status).toBe('failed')
+    })
+
+    it('skips rubric grading when deterministic validation already failed', async () => {
+      const mockAgent: Agent = {
+        name: 'mock-agent',
+        displayName: 'Mock Agent',
+        getApiKeyEnvVar: () => 'MOCK_API_KEY',
+        getDefaultModel: () => 'mock-model',
+        run: vi.fn().mockResolvedValue({
+          success: false,
+          output: 'Agent output',
+          duration: 6000,
+          error: 'Test failed',
+          testResult: { success: false, output: 'Test failed' },
+          scriptsResults: {},
+        }),
+      }
+
+      vi.spyOn(agentsIndex, 'getAgent').mockReturnValue(mockAgent)
+      const rubricSpy = vi.spyOn(rubric, 'gradeRunWithRubric').mockResolvedValue({
+        status: 'passed',
+        model: 'github-copilot/claude-opus-4.6',
+        output: { overall_pass: true },
+      })
+
+      const config: ResolvedExperimentConfig = {
+        agent: 'opencode',
+        model: 'github-copilot/claude-opus-4.6',
+        evals: ['test-eval'],
+        runs: 1,
+        earlyExit: false,
+        scripts: [],
+        timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
+        rubric: {
+          prompt: 'Grade this output',
+          schema: { type: 'object' },
+          passField: 'overall_pass',
+        },
+      }
+
+      const fixtures: EvalFixture[] = [{ name: 'test-eval', path: '/fake/path', prompt: 'Test prompt', isModule: true }]
+
+      const results = await runExperiment({
+        config,
+        fixtures,
+        apiKey: 'test-key',
+        resultsDir: TEST_DIR,
+        experimentName: 'test-experiment',
+      })
+
+      expect(results.evals[0].passedRuns).toBe(0)
+      expect(results.evals[0].deterministic.passedRuns).toBe(0)
+      expect(results.evals[0].rubric).toBeUndefined()
+      expect(rubricSpy).not.toHaveBeenCalled()
     })
   })
 })

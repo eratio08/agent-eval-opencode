@@ -9,7 +9,25 @@ import type { AgentRunResult } from './agents/types.js'
 import { isNonModelFailure } from './classifier.js'
 import { readFixtureFiles } from './fixture.js'
 import { parseTranscript, type Transcript } from './o11y/index.js'
-import type { EvalRunData, EvalRunResult, EvalSummary, ExperimentResults, RunnableExperimentConfig } from './types.js'
+import type {
+  DeterministicRunResult,
+  EvalMethodSummary,
+  EvalRunData,
+  EvalRunResult,
+  EvalSummary,
+  ExperimentResults,
+  RubricRunResult,
+  RunnableExperimentConfig,
+} from './types.js'
+
+function createMethodSummary(results: Array<{ status: 'passed' | 'failed' }>): EvalMethodSummary {
+  const passedRuns = results.filter((result) => result.status === 'passed').length
+  return {
+    totalRuns: results.length,
+    passedRuns,
+    passRate: results.length > 0 ? (passedRuns / results.length) * 100 : 0,
+  }
+}
 
 /**
  * Convert AgentRunResult to EvalRunData (result + transcript).
@@ -38,6 +56,10 @@ export function agentResultToEvalRunData(agentResult: AgentRunResult): EvalRunDa
       status: agentResult.success ? 'passed' : 'failed',
       error: agentResult.error,
       duration: agentResult.duration / 1000, // Convert to seconds
+      deterministic: {
+        status: agentResult.success ? 'passed' : 'failed',
+        error: agentResult.error,
+      },
     },
     transcript: agentResult.transcript,
     outputContent: Object.keys(outputContent).length > 0 ? outputContent : undefined,
@@ -51,15 +73,21 @@ export function agentResultToEvalRunData(agentResult: AgentRunResult): EvalRunDa
  */
 export function createEvalSummary(name: string, runData: EvalRunData[]): EvalSummary {
   const runs = runData.map((r) => r.result)
-  const passedRuns = runs.filter((r) => r.status === 'passed').length
   const totalDuration = runs.reduce((sum, r) => sum + r.duration, 0)
+  const overall = createMethodSummary(runs)
+  const deterministic = createMethodSummary(
+    runData.map((run) => run.result.deterministic ?? ({ status: run.result.status, error: run.result.error } satisfies DeterministicRunResult)),
+  )
+  const rubricResults = runData.map((run) => run.result.rubric).filter((rubric): rubric is RubricRunResult => Boolean(rubric))
 
   return {
     name,
     totalRuns: runs.length,
-    passedRuns,
-    passRate: runs.length > 0 ? (passedRuns / runs.length) * 100 : 0,
+    passedRuns: overall.passedRuns,
+    passRate: overall.passRate,
     meanDuration: runs.length > 0 ? totalDuration / runs.length : 0,
+    deterministic,
+    rubric: rubricResults.length > 0 ? createMethodSummary(rubricResults) : undefined,
     runs: runData,
   }
 }
@@ -134,6 +162,18 @@ export function saveResults(results: ExperimentResults, options: SaveResultsOpti
       passedRuns: evalSummary.passedRuns,
       passRate: `${evalSummary.passRate.toFixed(0)}%`,
       meanDuration: evalSummary.meanDuration,
+      deterministic: {
+        totalRuns: evalSummary.deterministic.totalRuns,
+        passedRuns: evalSummary.deterministic.passedRuns,
+        passRate: `${evalSummary.deterministic.passRate.toFixed(0)}%`,
+      },
+    }
+    if (evalSummary.rubric) {
+      summaryForFile.rubric = {
+        totalRuns: evalSummary.rubric.totalRuns,
+        passedRuns: evalSummary.rubric.passedRuns,
+        passRate: `${evalSummary.rubric.passRate.toFixed(0)}%`,
+      }
     }
     if (fingerprint) {
       summaryForFile.fingerprint = fingerprint
@@ -159,6 +199,9 @@ export function saveResults(results: ExperimentResults, options: SaveResultsOpti
       } = {
         ...runData.result,
         model,
+        deterministic:
+          runData.result.deterministic ??
+          ({ status: runData.result.status, error: runData.result.error } satisfies DeterministicRunResult),
       }
 
       // Save transcripts if available

@@ -6,6 +6,7 @@
  */
 
 import { getAgent } from './agents/index.js'
+import * as rubric from './rubric.js'
 import { agentResultToEvalRunData, createEvalSummary, createExperimentResults, saveResults } from './results.js'
 import type {
   EvalFixture,
@@ -229,6 +230,22 @@ export async function runExperiment(options: RunExperimentOptions): Promise<Expe
 
     const runData = agentResultToEvalRunData(agentResult)
 
+    if (config.rubric && runData.result.deterministic?.status !== 'failed' && runData.result.status === 'passed') {
+      const rubricResult = await rubric.gradeRunWithRubric({
+        rubric: config.rubric,
+        evalName: fixture.name,
+        experimentName,
+        runData,
+        model: config.model,
+      })
+
+      runData.result.rubric = rubricResult
+      if (rubricResult.status === 'failed') {
+        runData.result.status = 'failed'
+        runData.result.error = rubricResult.error ?? 'Rubric evaluation failed'
+      }
+    }
+
     return {
       fixtureName: fixture.name,
       runIndex,
@@ -250,6 +267,7 @@ export async function runExperiment(options: RunExperimentOptions): Promise<Expe
         !result.aborted &&
         result.runData.result.status === 'failed' &&
         result.runData.result.duration < ANOMALY_THRESHOLD_S &&
+        !result.runData.result.rubric &&
         !result.runData.result.error?.includes('timed out')
 
       if (!isSuspiciouslyFast || retry >= MAX_RETRIES) {
