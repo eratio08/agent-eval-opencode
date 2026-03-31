@@ -2,27 +2,21 @@
 
 ## Overview
 
-Plugin-style registry of AI coding agent wrappers.
-Each agent wraps a CLI tool in the uniform `Agent` interface.
+OpenCode-only agent wrapper.
+The `Agent` interface remains as an internal contract, but only the OpenCode implementation is shipped.
 
 ## Architecture
 
-- `types.ts` -- `Agent` interface contract (`name`, `run`, `getApiKeyEnvVar`, `getDefaultModel`)
-- `registry.ts` -- `Map<string, Agent>` singleton with `registerAgent`/`getAgent`/`listAgents`/`hasAgent`
-- `index.ts` -- wires up all agent factories, registers 7 variants, re-exports registry API
-- `shared.ts` -- cross-cutting utilities used by all agents
+- `types.ts` -- internal `Agent` contract (`name`, `run`, `getApiKeyEnvVar`, `getDefaultModel`)
+- `index.ts` -- exports the OpenCode entry point via `getAgent('opencode')`
+- `opencode.ts` -- OpenCode implementation and default model constant
+- `shared.ts` -- shared sandbox validation and transcript helpers
 
-## Registered Agents
+## Shipped Agent
 
-| Registry Key | Factory | Default Model | CLI Package | Install |
+| Key | Factory | Default Model | CLI Package | Install |
 |---|---|---|---|---|
-| `vercel-ai-gateway/claude-code` | `createClaudeCodeAgent({useVercelAiGateway: true})` | `opus` | `@anthropic-ai/claude-code` | npm |
-| `claude-code` | `createClaudeCodeAgent({useVercelAiGateway: false})` | `opus` | same | npm |
-| `vercel-ai-gateway/codex` | `createCodexAgent({useVercelAiGateway: true})` | `openai/gpt-5.2-codex` | `@openai/codex` | npm |
-| `codex` | `createCodexAgent({useVercelAiGateway: false})` | same | same | npm |
 | `opencode` | `createOpenCodeAgent()` | `github-copilot/claude-opus-4.6` | `opencode-ai` | npm |
-| `gemini` | `createGeminiAgent()` | `gemini-3-pro-preview` | `@google/gemini-cli` | npm |
-| `cursor` | `createCursorAgent()` | `composer-1.5` | Cursor CLI | curl script |
 
 ## Shared Agent Lifecycle
 
@@ -40,15 +34,10 @@ Each agent wraps a CLI tool in the uniform `Agent` interface.
 
 | Task | File |
 |------|------|
-| Add new agent | New file here + follow checklist in root AGENTS.md |
 | Change shared sandbox logic | `shared.ts` |
-| Modify agent registry | `registry.ts` |
-| API key constants | `shared.ts` (`AI_GATEWAY`, `ANTHROPIC_DIRECT`, etc.) |
+| Change agent entry point | `index.ts` |
+| Change OpenCode behavior | `opencode.ts` |
 
 ## Agent-Specific Notes
 
-- **Claude Code**: reads transcript from `~/.claude/projects/` filesystem, not stdout
-- **Codex**: writes TOML config to `~/.codex/config.toml`; supports `?reasoningEffort=` query param in model string
-- **OpenCode**: writes `opencode.json` config; Docker-only (mounts local credential files, no API key needed)
-- **Cursor**: installed via `curl`, not npm; binary is `agent` not `cursor`
-- **Gemini**: simplest implementation -- no config file, no model parsing
+- **OpenCode**: writes `opencode.json`, mounts local credential files, and currently requires the Docker sandbox for credential injection.

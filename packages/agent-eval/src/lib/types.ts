@@ -5,14 +5,7 @@
 /**
  * Supported AI agent types.
  */
-export type AgentType =
-  | 'vercel-ai-gateway/claude-code'
-  | 'claude-code'
-  | 'vercel-ai-gateway/codex'
-  | 'codex'
-  | 'opencode'
-  | 'gemini'
-  | 'cursor'
+export type AgentType = 'opencode'
 
 /**
  * Model identifier - any string accepted.
@@ -65,7 +58,7 @@ export interface ExperimentConfig {
 
   /** Which AI model the agent should use. Can be a single model or array of models to test.
    * If an array is provided, the experiment will run on each model.
-   * Default is agent-specific: 'opus' for claude-code, 'openai/gpt-5.2-codex' for codex */
+   * Default is the OpenCode default model. */
   model?: ModelTier | ModelTier[]
 
   /** Which evals to run. Can be a string, array, or filter function. @default '*' (all evals) */
@@ -192,7 +185,7 @@ export interface EvalRunResult {
 export interface EvalRunData {
   /** The eval result (will have paths added when saving) */
   result: EvalRunResult
-  /** Structured transcript from Claude Code (saved to transcript.jsonl) */
+  /** Structured transcript from OpenCode (saved to transcript.jsonl) */
   transcript?: string
   /** Script/test output content (saved to outputs/) */
   outputContent?: {

@@ -13,7 +13,6 @@ import { Command } from 'commander'
 import { config as dotenvConfig } from 'dotenv'
 import { minimatch } from 'minimatch'
 import pLimit from 'p-limit'
-import { getAgent } from './lib/agents/index.js'
 import { classifyFailure, isClassifierEnabled } from './lib/classifier.js'
 import { loadConfig, resolveEvalNames } from './lib/config.js'
 import { createConsoleProgressHandler, Dashboard } from './lib/dashboard.js'
@@ -59,7 +58,10 @@ function resolveConfigPath(input: string): string {
 /**
  * Run experiment command handler
  */
-async function runExperimentCommand(configInput: string, options: { dry?: boolean; smoke?: boolean }) {
+async function runExperimentCommand(
+  configInput: string,
+  options: { dry?: boolean; smoke?: boolean; ackFailures?: boolean },
+) {
   try {
     const configPath = resolveConfigPath(configInput)
     const absoluteConfigPath = resolve(process.cwd(), configPath)
@@ -156,18 +158,7 @@ async function runExperimentCommand(configInput: string, options: { dry?: boolea
       return
     }
 
-    // Get the agent to check for required API key
-    const agent = getAgent(config.agent)
-    const apiKeyEnvVar = agent.getApiKeyEnvVar()
-    let apiKey = ''
-    if (apiKeyEnvVar) {
-      apiKey = process.env[apiKeyEnvVar] ?? process.env.VERCEL_OIDC_TOKEN ?? ''
-      if (!apiKey) {
-        console.error(chalk.red(`${apiKeyEnvVar} (or VERCEL_OIDC_TOKEN) environment variable is required`))
-        console.error(chalk.gray(`Get your API key at: https://vercel.com/dashboard -> AI Gateway`))
-        process.exit(1)
-      }
-    }
+    const apiKey = ''
 
     // Filter fixtures to only the ones we want to run
     const selectedFixtures = fixtures.filter((f) => smokeEvalNames.includes(f.name))
@@ -205,6 +196,55 @@ async function runExperimentCommand(configInput: string, options: { dry?: boolea
           agent: config.agent,
         }),
       })
+
+      const failedEvals = results.evals.filter((e) => e.passedRuns === 0)
+      if (isClassifierEnabled() && failedEvals.length > 0 && !options.smoke) {
+        const timestamp = results.startedAt.replace(/:/g, '-')
+        const classifications = new Map<string, Classification>()
+        let hasNonModelFailures = false
+
+        for (const evalSummary of failedEvals) {
+          const evalResultDir = resolve(resultsDir, experimentName, timestamp, evalSummary.name)
+          const classification = await classifyFailure(evalResultDir, evalSummary.name, experimentName)
+
+          if (!classification) {
+            continue
+          }
+
+          classifications.set(evalSummary.name, classification)
+          console.log(chalk.gray(`  ${evalSummary.name}: ${classification.failureType} — ${classification.failureReason}`))
+
+          if (classification.failureType !== 'model') {
+            if (options.ackFailures) {
+              classification.acknowledged = true
+              writeFileSync(resolve(evalResultDir, 'classification.json'), JSON.stringify(classification, null, 2))
+            } else {
+              rmSync(evalResultDir, { recursive: true })
+              console.log(chalk.gray(`  Removed ${evalSummary.name} (${classification.failureType} failure)`))
+              hasNonModelFailures = true
+            }
+          }
+        }
+
+        if (hasNonModelFailures) {
+          console.log(chalk.yellow(`\n  To keep non-model failures as final results, re-run with --ack-failures`))
+        }
+      }
+
+      const housekeepingStats = housekeep(resultsDir, experimentName)
+      if (
+        housekeepingStats.removedDuplicates +
+          housekeepingStats.removedIncomplete +
+          housekeepingStats.removedNonModelFailures >
+        0
+      ) {
+        console.log(
+          chalk.gray(
+            `  Housekeeping: removed ${housekeepingStats.removedDuplicates} duplicate(s), ` +
+              `${housekeepingStats.removedIncomplete} incomplete, ${housekeepingStats.removedNonModelFailures} non-model failure(s)`,
+          ),
+        )
+      }
 
       // Check if this experiment passed
       const experimentPassed = results.evals.every((e) => e.passedRuns === e.totalRuns)
@@ -451,10 +491,10 @@ async function runAllCommand(
     if (!isClassifierEnabled()) {
       console.log(
         chalk.yellow(
-          '\n⚠️  Classifier disabled: Neither AI_GATEWAY_API_KEY nor VERCEL_OIDC_TOKEN is set.\n' +
-            '  The classifier automatically identifies why evals failed (model error, infrastructure issue, or timeout).\n' +
+          '\n⚠️  Classifier disabled: OpenCode credentials are not available locally.\n' +
+            '  The classifier uses OpenCode to identify why evals failed (model error, infrastructure issue, or timeout).\n' +
             '  Without it, all failed results are kept as-is and housekeeping will not remove non-model failures.\n' +
-            '  Set AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN to enable classifier for cleaner result management.\n',
+            '  Authenticate OpenCode locally to enable classifier-based cleanup.\n',
         ),
       )
     }
@@ -488,16 +528,7 @@ async function runAllCommand(
         evalNames = [evalNames.sort()[0]]
       }
 
-      const agent = getAgent(config.agent)
-      const apiKeyEnvVar = agent.getApiKeyEnvVar()
-      let apiKey = ''
-      if (apiKeyEnvVar) {
-        apiKey = process.env[apiKeyEnvVar] ?? process.env.VERCEL_OIDC_TOKEN ?? ''
-        if (!apiKey) {
-          console.error(chalk.red(`${apiKeyEnvVar} (or VERCEL_OIDC_TOKEN) not set, skipping ${baseExperimentName}`))
-          return
-        }
-      }
+      const apiKey = ''
 
       for (const model of models) {
         const experimentName = models.length > 1 ? `${baseExperimentName}/${model}` : baseExperimentName

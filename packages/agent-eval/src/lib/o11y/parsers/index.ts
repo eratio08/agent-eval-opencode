@@ -11,33 +11,18 @@ import type {
   TranscriptSummary,
   WebFetchInfo,
 } from '../types.js'
-import { parseClaudeCodeTranscript } from './claude-code.js'
-import { parseCodexTranscript } from './codex.js'
-import { parseCursorTranscript } from './cursor.js'
-import { parseGeminiTranscript } from './gemini.js'
 import { parseOpenCodeTranscript } from './opencode.js'
 
 /**
  * Supported agent types for parsing.
  */
-export type ParseableAgent =
-  | 'vercel-ai-gateway/claude-code'
-  | 'claude-code'
-  | 'vercel-ai-gateway/codex'
-  | 'codex'
-  | 'opencode'
-  | 'gemini'
-  | 'cursor'
+export type ParseableAgent = 'opencode'
 
 /**
  * Parser registry mapping agent key patterns to their parsers.
  */
 const AGENT_PARSERS = {
-  'claude-code': parseClaudeCodeTranscript,
-  codex: parseCodexTranscript,
   opencode: parseOpenCodeTranscript,
-  gemini: parseGeminiTranscript,
-  cursor: parseCursorTranscript,
 } as const
 
 /**
@@ -50,12 +35,7 @@ export const SUPPORTED_AGENTS = Object.keys(AGENT_PARSERS) as Array<keyof typeof
  * Returns null if no parser is available for the agent.
  */
 function getParserForAgent(agent: string): ((raw: string) => { events: TranscriptEvent[]; errors: string[] }) | null {
-  for (const key of SUPPORTED_AGENTS) {
-    if (agent.includes(key)) {
-      return AGENT_PARSERS[key]
-    }
-  }
-  return null
+  return agent === 'opencode' ? AGENT_PARSERS.opencode : null
 }
 
 /**

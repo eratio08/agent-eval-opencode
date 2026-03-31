@@ -3,14 +3,14 @@ import { CONFIG_DEFAULTS, resolveConfig, resolveEvalNames, validateConfig } from
 
 describe('validateConfig', () => {
   it('accepts valid minimal config', () => {
-    const config = { agent: 'claude-code' }
+    const config = { agent: 'opencode' }
     expect(() => validateConfig(config)).not.toThrow()
   })
 
   it('accepts valid full config', () => {
     const config = {
-      agent: 'claude-code',
-      model: 'opus',
+      agent: 'opencode',
+      model: 'github-copilot/claude-opus-4.6',
       evals: ['eval-1', 'eval-2'],
       runs: 5,
       earlyExit: false,
@@ -22,15 +22,15 @@ describe('validateConfig', () => {
 
   it('accepts array of models', () => {
     const config = {
-      agent: 'claude-code',
-      model: ['opus', 'sonnet', 'haiku'],
+      agent: 'opencode',
+      model: ['github-copilot/claude-opus-4.6', 'github-copilot/gpt-5'],
     }
     expect(() => validateConfig(config)).not.toThrow()
   })
 
   it('accepts function evals filter', () => {
     const config = {
-      agent: 'claude-code',
+      agent: 'opencode',
       evals: (name: string) => name.startsWith('auth-'),
     }
     expect(() => validateConfig(config)).not.toThrow()
@@ -41,19 +41,24 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).toThrow('Invalid experiment configuration')
   })
 
+  it('rejects non-opencode agents', () => {
+    const config = { agent: 'claude-code' }
+    expect(() => validateConfig(config)).toThrow('Invalid experiment configuration')
+  })
+
   it('rejects non-positive runs', () => {
-    const config = { agent: 'claude-code', runs: 0 }
+    const config = { agent: 'opencode', runs: 0 }
     expect(() => validateConfig(config)).toThrow('Invalid experiment configuration')
   })
 })
 
 describe('resolveConfig', () => {
   it('applies defaults for minimal config', () => {
-    const config = { agent: 'claude-code' as const }
+    const config = { agent: 'opencode' as const }
     const resolved = resolveConfig(config)
 
-    expect(resolved.agent).toBe('claude-code')
-    expect(resolved.model).toBe('opus')
+    expect(resolved.agent).toBe('opencode')
+    expect(resolved.model).toBe(CONFIG_DEFAULTS.model)
     expect(resolved.runs).toBe(CONFIG_DEFAULTS.runs)
     expect(resolved.earlyExit).toBe(CONFIG_DEFAULTS.earlyExit)
     expect(resolved.evals).toBe('*')
@@ -61,14 +66,14 @@ describe('resolveConfig', () => {
 
   it('preserves provided values', () => {
     const config = {
-      agent: 'claude-code' as const,
-      model: 'haiku' as const,
+      agent: 'opencode' as const,
+      model: 'github-copilot/gpt-5' as const,
       runs: 10,
       earlyExit: false,
     }
     const resolved = resolveConfig(config)
 
-    expect(resolved.model).toBe('haiku')
+    expect(resolved.model).toBe('github-copilot/gpt-5')
     expect(resolved.runs).toBe(10)
     expect(resolved.earlyExit).toBe(false)
   })

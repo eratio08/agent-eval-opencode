@@ -64,7 +64,7 @@ describe('CLI', () => {
       mkdirSync(experimentsDir, { recursive: true })
 
       // Create config file in experiments/
-      const configContent = `export default { agent: 'claude-code' };`
+      const configContent = `export default { agent: 'opencode' };`
       writeFileSync(join(experimentsDir, 'cc.ts'), configContent)
 
       // Create evals directory with valid fixture
@@ -88,7 +88,7 @@ describe('CLI', () => {
       const experimentsDir = join(projectDir, 'experiments')
       mkdirSync(experimentsDir, { recursive: true })
 
-      const configContent = `export default { agent: 'claude-code' };`
+      const configContent = `export default { agent: 'opencode' };`
       writeFileSync(join(experimentsDir, 'cc.ts'), configContent)
 
       const evalsDir = join(projectDir, 'evals')
@@ -111,7 +111,7 @@ describe('CLI', () => {
       const experimentsDir = join(projectDir, 'experiments')
       mkdirSync(experimentsDir, { recursive: true })
 
-      const configContent = `export default { agent: 'claude-code' };`
+      const configContent = `export default { agent: 'opencode' };`
       writeFileSync(join(experimentsDir, 'cc.ts'), configContent)
 
       const evalsDir = join(projectDir, 'evals')
@@ -139,7 +139,7 @@ describe('CLI', () => {
       const experimentsDir = join(projectDir, 'experiments')
       mkdirSync(experimentsDir, { recursive: true })
 
-      const configContent = `export default { agent: 'claude-code' };`
+      const configContent = `export default { agent: 'opencode' };`
       writeFileSync(join(experimentsDir, 'cc.ts'), configContent)
 
       // Create empty evals directory
