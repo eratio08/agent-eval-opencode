@@ -36,6 +36,42 @@ describe('validateConfig', () => {
     expect(() => validateConfig(config)).not.toThrow()
   })
 
+  it('accepts rubric config for opencode', () => {
+    const config = {
+      agent: 'opencode',
+      rubric: {
+        prompt: 'Grade this output',
+        schema: {
+          type: 'object',
+          properties: {
+            overall_pass: { type: 'boolean' },
+          },
+          required: ['overall_pass'],
+        },
+        passField: 'overall_pass' as const,
+      },
+    }
+    expect(() => validateConfig(config)).not.toThrow()
+  })
+
+  it('rejects rubric config for non-opencode agents', () => {
+    const config = {
+      agent: 'claude-code',
+      rubric: {
+        prompt: 'Grade this output',
+        schema: {
+          type: 'object',
+          properties: {
+            overall_pass: { type: 'boolean' },
+          },
+          required: ['overall_pass'],
+        },
+        passField: 'overall_pass' as const,
+      },
+    }
+    expect(() => validateConfig(config)).toThrow('rubric grading is currently only supported for the opencode agent')
+  })
+
   it('rejects invalid agent', () => {
     const config = { agent: 'invalid-agent' }
     expect(() => validateConfig(config)).toThrow('Invalid experiment configuration')
@@ -57,6 +93,7 @@ describe('resolveConfig', () => {
     expect(resolved.runs).toBe(CONFIG_DEFAULTS.runs)
     expect(resolved.earlyExit).toBe(CONFIG_DEFAULTS.earlyExit)
     expect(resolved.evals).toBe('*')
+    expect(resolved.rubric).toBeUndefined()
   })
 
   it('preserves provided values', () => {
@@ -65,12 +102,18 @@ describe('resolveConfig', () => {
       model: 'haiku' as const,
       runs: 10,
       earlyExit: false,
+      rubric: {
+        prompt: 'Grade this output',
+        schema: { type: 'object' },
+        passField: 'overall_pass' as const,
+      },
     }
     const resolved = resolveConfig(config)
 
     expect(resolved.model).toBe('haiku')
     expect(resolved.runs).toBe(10)
     expect(resolved.earlyExit).toBe(false)
+    expect(resolved.rubric).toEqual(config.rubric)
   })
 })
 

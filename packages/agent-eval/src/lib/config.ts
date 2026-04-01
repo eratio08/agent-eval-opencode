@@ -7,6 +7,14 @@ import { z } from 'zod'
 import { getAgent } from './agents/index.js'
 import type { EvalFilter, ExperimentConfig, ResolvedExperimentConfig } from './types.js'
 
+const rubricConfigSchema = z.object({
+  prompt: z.string().min(1),
+  schema: z.record(z.unknown()),
+  passField: z.literal('overall_pass'),
+  model: z.string().optional(),
+  retryCount: z.number().int().nonnegative().optional(),
+})
+
 /**
  * Default configuration values.
  */
@@ -44,6 +52,7 @@ const experimentConfigSchema = z.object({
   sandbox: z.enum(['vercel', 'docker', 'auto']).optional(),
   editPrompt: z.function().args(z.string()).returns(z.string()).optional(),
   copyFiles: z.enum(['none', 'changed', 'all']).optional(),
+  rubric: rubricConfigSchema.optional(),
 })
 
 /**
@@ -58,7 +67,12 @@ export function validateConfig(config: unknown): ExperimentConfig {
     throw new Error(`Invalid experiment configuration:\n${errors}`)
   }
 
-  return result.data as ExperimentConfig
+  const parsed = result.data as ExperimentConfig
+  if (parsed.rubric && parsed.agent !== 'opencode') {
+    throw new Error(`Invalid experiment configuration:\n  - rubric: rubric grading is currently only supported for the opencode agent`)
+  }
+
+  return parsed
 }
 
 /**
@@ -83,6 +97,7 @@ export function resolveConfig(config: ExperimentConfig): ResolvedExperimentConfi
     sandbox: config.sandbox ?? CONFIG_DEFAULTS.sandbox,
     editPrompt: config.editPrompt,
     copyFiles: config.copyFiles ?? CONFIG_DEFAULTS.copyFiles,
+    rubric: config.rubric,
   }
 }
 

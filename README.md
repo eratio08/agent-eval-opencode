@@ -210,6 +210,25 @@ const config: ExperimentConfig = {
   // 'changed' - copy only files modified by the agent
   // 'all' - copy the entire project including original fixture files
   copyFiles: 'changed',
+
+  // Optional rubric-based grading (OpenCode only)
+  rubric: {
+    prompt: `Evaluate the completed repository.
+
+Return overall_pass=true only if the implementation is production-ready.
+Score code quality, correctness, and adherence to the requested approach.`,
+    schema: {
+      type: 'object',
+      properties: {
+        overall_pass: { type: 'boolean' },
+        score: { type: 'number' },
+        notes: { type: 'string' }
+      },
+      required: ['overall_pass'],
+      additionalProperties: false,
+    },
+    passField: 'overall_pass',
+  },
 };
 
 export default config;
@@ -221,13 +240,15 @@ export default config;
 // Vercel AI Gateway (recommended -- unified billing and observability)
 agent: 'vercel-ai-gateway/claude-code'  // Claude Code via AI Gateway
 agent: 'vercel-ai-gateway/codex'        // OpenAI Codex via AI Gateway
-agent: 'vercel-ai-gateway/opencode'     // OpenCode via AI Gateway
 
 // Direct API (uses provider keys directly)
 agent: 'claude-code'  // requires ANTHROPIC_API_KEY
 agent: 'codex'        // requires OPENAI_API_KEY
 agent: 'gemini'       // requires GEMINI_API_KEY
 agent: 'cursor'       // requires CURSOR_API_KEY
+
+// Local OpenCode CLI (Docker sandbox only, uses local OpenCode auth files)
+agent: 'opencode'
 ```
 
 ### Multi-model experiments
@@ -242,18 +263,53 @@ const config: ExperimentConfig = {
 };
 ```
 
-### OpenCode model format
+### Rubric grading
 
-OpenCode uses Vercel AI Gateway exclusively. Models must use the `vercel/{provider}/{model}` format:
+Rubric grading is optional and currently supported only for `agent: 'opencode'`.
+
+When enabled, each run has two evaluation methods:
+- `deterministic`: the existing test and script validation
+- `rubric`: an OpenCode structured-output grader
+
+The top-level run result and summary remain the combined final outcome.
+That means a run passes only when both deterministic validation and rubric grading pass.
 
 ```typescript
-model: 'vercel/anthropic/claude-sonnet-4'
-model: 'vercel/openai/gpt-4o'
-model: 'vercel/moonshotai/kimi-k2'
-model: 'vercel/minimax/minimax-m2.1'
+const config: ExperimentConfig = {
+  agent: 'opencode',
+  model: 'github-copilot/claude-opus-4.6',
+  rubric: {
+    prompt: `Review the completed implementation.
+
+Mark overall_pass=true only if the code is correct, clear, and complete.`,
+    schema: {
+      type: 'object',
+      properties: {
+        overall_pass: { type: 'boolean' },
+        score: { type: 'number' },
+        notes: { type: 'string' }
+      },
+      required: ['overall_pass'],
+      additionalProperties: false,
+    },
+    passField: 'overall_pass',
+  },
+};
 ```
 
-The `vercel/` prefix is required. Using `anthropic/claude-sonnet-4` (without `vercel/`) will fail with a "provider not found" error.
+Notes:
+- The grader runs only after deterministic validation succeeds.
+- A rubric transport or schema error is treated as a failed rubric result.
+- The structured grader output is stored in `run-N/result.json` under `rubric.output`.
+
+### OpenCode model format
+
+OpenCode uses local OpenCode credentials and the model string should match what the OpenCode CLI accepts.
+The default is:
+
+```typescript
+model: 'github-copilot/claude-opus-4.6'
+```
 
 ## A/B Testing
 
@@ -347,16 +403,47 @@ Each eval directory contains a `summary.json` with:
   "passedRuns": 0,
   "passRate": "0%",
   "meanDuration": 45.2,
-  "fingerprint": "a1b2c3...",
-  "classification": {
-    "failureType": "infra",
-    "failureReason": "Rate limited (HTTP 429) — model never ran"
+  "deterministic": {
+    "totalRuns": 2,
+    "passedRuns": 1,
+    "passRate": "50%"
   },
+  "rubric": {
+    "totalRuns": 1,
+    "passedRuns": 0,
+    "passRate": "0%"
+  },
+  "fingerprint": "a1b2c3...",
   "valid": false
 }
 ```
 
-The `fingerprint` field enables result reuse across runs. The `classification` and `valid` fields appear only for failed evals -- `valid: false` marks non-model failures so they are not reused by fingerprinting and are automatically retried.
+Top-level `passedRuns` and `passRate` are the overall combined result.
+`deterministic` and `rubric` show the method-specific summaries when those evaluation methods ran.
+The `fingerprint` field enables result reuse across runs. `valid: false` marks non-model failures so they are not reused by fingerprinting and are automatically retried.
+
+### result.json
+
+Each run directory contains a `result.json` with the combined outcome plus method-specific details:
+
+```json
+{
+  "status": "failed",
+  "error": "Rubric evaluation failed",
+  "duration": 45.2,
+  "deterministic": {
+    "status": "passed"
+  },
+  "rubric": {
+    "status": "failed",
+    "output": {
+      "overall_pass": false,
+      "score": 61,
+      "notes": "Implementation works but does not follow the requested structure."
+    }
+  }
+}
+```
 
 ### Playground UI
 
@@ -373,6 +460,7 @@ This opens a local Next.js app with:
 - **Compare** two runs side-by-side with pass rate deltas
 
 The `playground` command delegates to Vercel's official `@vercel/agent-eval-playground` package.
+It will ignore the additional `deterministic` and `rubric` fields safely, but it does not render rubric scores today.
 
 Options:
 ```bash
@@ -399,7 +487,7 @@ Files are saved to `results/<experiment>/<timestamp>/<eval>/run-N/project/`. The
 
 ## Result Reuse
 
-The framework computes a SHA-256 fingerprint for each (eval, config) pair. The fingerprint covers all eval directory files and the config fields that affect results: `agent`, `model`, `scripts`, `timeout`, `earlyExit`, and `runs`.
+The framework computes a SHA-256 fingerprint for each (eval, config) pair. The fingerprint covers all eval directory files and the config fields that affect results: `agent`, `model`, `scripts`, `timeout`, `earlyExit`, `runs`, and `rubric`.
 
 On subsequent runs, evals with a matching fingerprint and a valid cached result (at least one passing run) are skipped automatically. This means:
 
@@ -453,7 +541,7 @@ Every run requires an API key for the agent and a token for the sandbox. Classif
 
 The **classifier is optional**: if neither `AI_GATEWAY_API_KEY` nor `VERCEL_OIDC_TOKEN` is set, failure classification is skipped and all results are preserved as-is. Set either key to enable the classifier, which automatically identifies and removes non-model failures (infrastructure errors, rate limits, timeouts).
 
-OpenCode only supports Vercel AI Gateway (`vercel-ai-gateway/opencode`). There is no direct API option for OpenCode.
+OpenCode runs through the local OpenCode CLI and currently requires the Docker sandbox plus local OpenCode credentials on the host.
 
 ### Setup
 

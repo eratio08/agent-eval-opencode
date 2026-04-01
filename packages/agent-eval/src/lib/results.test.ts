@@ -81,6 +81,39 @@ describe('results utilities', () => {
       expect(summary.passedRuns).toBe(2)
       expect(summary.passRate).toBeCloseTo(66.67, 1)
       expect(summary.meanDuration).toBeCloseTo(11, 0)
+      expect(summary.deterministic.passRate).toBeCloseTo(66.67, 1)
+      expect(summary.rubric).toBeUndefined()
+    })
+
+    it('tracks deterministic and rubric summaries separately', () => {
+      const runData: EvalRunData[] = [
+        {
+          result: {
+            status: 'failed',
+            error: 'Rubric evaluation failed',
+            duration: 10,
+            deterministic: { status: 'passed' },
+            rubric: { status: 'failed', output: { overall_pass: false } },
+          },
+        },
+        {
+          result: {
+            status: 'passed',
+            duration: 15,
+            deterministic: { status: 'passed' },
+            rubric: { status: 'passed', output: { overall_pass: true } },
+          },
+        },
+      ]
+
+      const summary = createEvalSummary('rubric-eval', runData)
+
+      expect(summary.passedRuns).toBe(1)
+      expect(summary.passRate).toBe(50)
+      expect(summary.deterministic.passedRuns).toBe(2)
+      expect(summary.deterministic.passRate).toBe(100)
+      expect(summary.rubric?.passedRuns).toBe(1)
+      expect(summary.rubric?.passRate).toBe(50)
     })
   })
 
@@ -94,6 +127,8 @@ describe('results utilities', () => {
         earlyExit: false,
         scripts: ['build'],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
       }
 
       const evals = [createEvalSummary('eval-1', [{ result: { status: 'passed', duration: 10 } }])]
@@ -119,16 +154,29 @@ describe('results utilities', () => {
         earlyExit: true,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
       }
 
       const evals = [
         createEvalSummary('eval-1', [
           {
-            result: { status: 'passed', duration: 10 },
+            result: {
+              status: 'passed',
+              duration: 10,
+              deterministic: { status: 'passed' },
+            },
             transcript: '{"role":"assistant"}',
             outputContent: { eval: 'Test output here', scripts: { build: 'Build output here' } },
           },
-          { result: { status: 'failed', duration: 8, error: 'Error' } },
+          {
+            result: {
+              status: 'failed',
+              duration: 8,
+              error: 'Error',
+              deterministic: { status: 'failed', error: 'Error' },
+            },
+          },
         ]),
       ]
 
@@ -176,6 +224,7 @@ describe('results utilities', () => {
       expect(summaryJson.passedRuns).toBe(1)
       expect(summaryJson.passRate).toBe('50%')
       expect(summaryJson.meanDuration).toBe(9)
+      expect(summaryJson.deterministic).toEqual({ totalRuns: 2, passedRuns: 1, passRate: '50%' })
       // Should NOT have name or runs array in the file
       expect(summaryJson.name).toBeUndefined()
       expect(summaryJson.runs).toBeUndefined()
@@ -184,6 +233,7 @@ describe('results utilities', () => {
       const resultJson = JSON.parse(readFileSync(join(outputDir, 'eval-1', 'run-1', 'result.json'), 'utf-8'))
       expect(resultJson.status).toBe('passed')
       expect(resultJson.duration).toBe(10)
+      expect(resultJson.deterministic).toEqual({ status: 'passed' })
       // Should have paths to transcript and outputs
       expect(resultJson.transcriptPath).toBe('./transcript.json')
       expect(resultJson.transcriptRawPath).toBe('./transcript-raw.jsonl')
@@ -218,12 +268,14 @@ describe('results utilities', () => {
         earlyExit: true,
         scripts: ['eval'],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
       }
 
       const evals = [
         createEvalSummary('eval-1', [
           {
-            result: { status: 'passed', duration: 10 },
+            result: { status: 'passed', duration: 10, deterministic: { status: 'passed' } },
             outputContent: {
               eval: 'EVAL.ts test output',
               scripts: { eval: 'npm run eval output' },
@@ -266,16 +318,18 @@ describe('results utilities', () => {
         earlyExit: false,
         scripts: [],
         timeout: 300,
+        copyFiles: 'none',
+        sandbox: 'auto',
       }
 
       const evals = [
         createEvalSummary('eval-1', [
-          { result: { status: 'passed', duration: 10 } },
-          { result: { status: 'passed', duration: 12 } },
+          { result: { status: 'passed', duration: 10, deterministic: { status: 'passed' } } },
+          { result: { status: 'passed', duration: 12, deterministic: { status: 'passed' } } },
         ]),
         createEvalSummary('eval-2', [
-          { result: { status: 'passed', duration: 8 } },
-          { result: { status: 'failed', duration: 15, error: 'Error' } },
+          { result: { status: 'passed', duration: 8, deterministic: { status: 'passed' } } },
+          { result: { status: 'failed', duration: 15, error: 'Error', deterministic: { status: 'failed', error: 'Error' } } },
         ]),
       ]
 

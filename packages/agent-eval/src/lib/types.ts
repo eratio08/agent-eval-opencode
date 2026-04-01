@@ -25,6 +25,14 @@ export type ModelTier = string
  */
 export type EvalFilter = (name: string) => boolean
 
+export interface RubricConfig {
+  prompt: string
+  schema: Record<string, unknown>
+  passField: 'overall_pass'
+  model?: ModelTier
+  retryCount?: number
+}
+
 /**
  * Sandbox interface for setup functions.
  * Provides methods to interact with the isolated VM.
@@ -98,6 +106,9 @@ export interface ExperimentConfig {
    * - 'all': Original project files + agent changes overlaid on top
    * @default 'none' */
   copyFiles?: 'none' | 'changed' | 'all'
+
+  /** Optional rubric-based grading for qualitative evaluation. */
+  rubric?: RubricConfig
 }
 
 /**
@@ -115,6 +126,7 @@ export interface ResolvedExperimentConfig {
   sandbox: SandboxBackend | 'auto'
   editPrompt?: (prompt: string) => string
   copyFiles: 'none' | 'changed' | 'all'
+  rubric?: RubricConfig
 }
 
 /**
@@ -132,6 +144,25 @@ export interface RunnableExperimentConfig {
   sandbox: SandboxBackend | 'auto'
   editPrompt?: (prompt: string) => string
   copyFiles: 'none' | 'changed' | 'all'
+  rubric?: RubricConfig
+}
+
+export interface DeterministicRunResult {
+  status: 'passed' | 'failed'
+  error?: string
+}
+
+export interface RubricRunResult {
+  status: 'passed' | 'failed'
+  model?: string
+  output?: Record<string, unknown>
+  error?: string
+}
+
+export interface EvalMethodSummary {
+  totalRuns: number
+  passedRuns: number
+  passRate: number
 }
 
 /**
@@ -173,6 +204,10 @@ export interface EvalRunResult {
   duration: number
   /** Model used for this run */
   model?: string
+  /** Deterministic validation result before rubric folding */
+  deterministic?: DeterministicRunResult
+  /** Rubric-based grading result, when enabled */
+  rubric?: RubricRunResult
   /** Path to parsed transcript file (relative to run directory) */
   transcriptPath?: string
   /** Path to raw transcript file (relative to run directory) */
@@ -221,6 +256,10 @@ export interface EvalSummary {
   passRate: number
   /** Mean duration across all runs */
   meanDuration: number
+  /** Summary of deterministic-only outcomes */
+  deterministic: EvalMethodSummary
+  /** Summary of rubric-only outcomes */
+  rubric?: EvalMethodSummary
   /** Individual run data (internal, not all fields saved to summary.json) */
   runs: EvalRunData[]
 }
