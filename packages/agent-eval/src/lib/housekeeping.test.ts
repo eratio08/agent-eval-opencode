@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as classifier from './classifier.js'
 import { housekeep } from './housekeeping.js'
 
 const TEST_DIR = '/tmp/eval-framework-housekeeping-test'
@@ -29,16 +30,15 @@ function createResult(dir: string, opts: { summary?: boolean; transcript?: boole
 describe('housekeep', () => {
   beforeEach(() => {
     mkdirSync(TEST_DIR, { recursive: true })
-    // Enable classifier for tests that expect non-model failures to be cleaned up
-    process.env.AI_GATEWAY_API_KEY = 'test-key'
+    process.env.OPENCODE_CLASSIFIER_TEST_MODE = '1'
   })
 
   afterEach(() => {
     if (existsSync(TEST_DIR)) {
       rmSync(TEST_DIR, { recursive: true })
     }
-    // Clean up env var
-    delete process.env.AI_GATEWAY_API_KEY
+    delete process.env.OPENCODE_CLASSIFIER_TEST_MODE
+    vi.restoreAllMocks()
   })
 
   it('keeps newest result and removes older duplicate', () => {
@@ -159,8 +159,7 @@ describe('housekeep', () => {
       JSON.stringify({ failureType: 'infra', failureReason: 'API error' }),
     )
 
-    // Disable classifier by removing env var
-    delete process.env.AI_GATEWAY_API_KEY
+    vi.spyOn(classifier, 'isClassifierEnabled').mockReturnValue(false)
 
     const stats = housekeep(TEST_DIR, 'exp')
 

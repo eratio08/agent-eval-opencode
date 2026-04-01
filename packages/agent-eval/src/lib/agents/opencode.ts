@@ -19,6 +19,11 @@ import {
 } from './shared.js'
 import type { Agent, AgentRunOptions, AgentRunResult } from './types.js'
 
+export const DEFAULT_OPENCODE_MODEL = 'github-copilot/claude-opus-4.6'
+
+const OPENCODE_AUTH_DIR = join(homedir(), '.local', 'share', 'opencode')
+const GITHUB_COPILOT_CONFIG_DIR = join(homedir(), '.config', 'github-copilot')
+
 /** Union type for sandbox implementations */
 type AnySandbox = SandboxManager | DockerSandboxManager
 
@@ -47,13 +52,15 @@ function extractTranscriptFromOutput(output: string): string | undefined {
  * Generate OpenCode config file content.
  * Only sets permissions -- provider auth comes from mounted credentials.
  */
-function generateOpenCodeConfig(): string {
+export function generateOpenCodeConfig(
+  permissions?: Partial<Record<'write' | 'edit' | 'bash', 'allow' | 'deny'>>,
+): string {
   return `{
   "$schema": "https://opencode.ai/config.json",
   "permission": {
-    "write": "allow",
-    "edit": "allow",
-    "bash": "allow"
+    "write": "${permissions?.write ?? 'allow'}",
+    "edit": "${permissions?.edit ?? 'allow'}",
+    "bash": "${permissions?.bash ?? 'allow'}"
   }
 }`
 }
@@ -64,17 +71,16 @@ interface CredentialUpload {
 }
 
 function collectCredentialFiles(): CredentialUpload[] {
-  const home = homedir()
   const uploads: CredentialUpload[] = []
 
   const candidates: { hostDir: string; containerDir: string; fileNames: string[] }[] = [
     {
-      hostDir: join(home, '.local', 'share', 'opencode'),
+      hostDir: OPENCODE_AUTH_DIR,
       containerDir: '/home/node/.local/share/opencode',
       fileNames: ['auth.json'],
     },
     {
-      hostDir: join(home, '.config', 'github-copilot'),
+      hostDir: GITHUB_COPILOT_CONFIG_DIR,
       containerDir: '/home/node/.config/github-copilot',
       fileNames: ['apps.json', 'hosts.json'],
     },
@@ -102,6 +108,20 @@ function collectCredentialFiles(): CredentialUpload[] {
   return uploads
 }
 
+export function hasOpenCodeCredentials(): boolean {
+  return existsSync(join(OPENCODE_AUTH_DIR, 'auth.json')) && existsSync(GITHUB_COPILOT_CONFIG_DIR)
+}
+
+export async function uploadOpenCodeCredentials(dockerSandbox: DockerSandboxManager): Promise<void> {
+  const credentialUploads = collectCredentialFiles()
+
+  for (const upload of credentialUploads) {
+    await dockerSandbox.uploadFilesToPath(upload.containerDir, upload.files)
+  }
+
+  await dockerSandbox.ensureUserOwnership('/home/node')
+}
+
 /**
  * Create OpenCode agent using host-mounted credentials.
  * Requires Docker sandbox (bind mounts are not supported on Vercel sandbox).
@@ -116,7 +136,7 @@ export function createOpenCodeAgent(): Agent {
     },
 
     getDefaultModel(): ModelTier {
-      return 'github-copilot/claude-opus-4.6'
+      return DEFAULT_OPENCODE_MODEL
     },
 
     async run(fixturePath: string, options: AgentRunOptions): Promise<AgentRunResult> {
@@ -160,8 +180,6 @@ export function createOpenCodeAgent(): Agent {
           }
         }
 
-        const credentialUploads = collectCredentialFiles()
-
         const resolvedBackend = options.sandbox === 'vercel' ? 'vercel' : 'docker'
         if (resolvedBackend === 'vercel') {
           throw new Error(
@@ -187,10 +205,7 @@ export function createOpenCodeAgent(): Agent {
         }
 
         const dockerSandbox = sandbox as DockerSandboxManager
-        for (const upload of credentialUploads) {
-          await dockerSandbox.uploadFilesToPath(upload.containerDir, upload.files)
-        }
-        await dockerSandbox.ensureUserOwnership('/home/node')
+        await uploadOpenCodeCredentials(dockerSandbox)
 
         await sandbox.uploadFiles(workspaceFiles)
 
@@ -297,3 +312,5 @@ export function createOpenCodeAgent(): Agent {
     },
   }
 }
+
+export const openCodeAgent = createOpenCodeAgent()

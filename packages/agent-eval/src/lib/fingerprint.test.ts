@@ -7,13 +7,15 @@ import type { RunnableExperimentConfig } from './types.js'
 const TEST_DIR = '/tmp/eval-framework-fingerprint-test'
 
 const baseConfig: RunnableExperimentConfig = {
-  agent: 'claude-code',
-  model: 'opus',
+  agent: 'opencode',
+  model: 'github-copilot/claude-opus-4.6',
   evals: '*',
   runs: 2,
   earlyExit: true,
   scripts: ['build'],
   timeout: 600,
+  sandbox: 'docker',
+  copyFiles: 'none',
 }
 
 function createEvalDir(name: string, files: Record<string, string>): string {
@@ -75,7 +77,7 @@ describe('computeFingerprint', () => {
     })
 
     const fp1 = computeFingerprint(evalDir, baseConfig)
-    const fp2 = computeFingerprint(evalDir, { ...baseConfig, model: 'sonnet' })
+    const fp2 = computeFingerprint(evalDir, { ...baseConfig, model: 'github-copilot/gpt-5' })
 
     expect(fp1).not.toBe(fp2)
   })

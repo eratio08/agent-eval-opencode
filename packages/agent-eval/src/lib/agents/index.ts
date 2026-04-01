@@ -1,24 +1,18 @@
 /**
- * Agent registry with built-in agents.
+ * OpenCode-only agent entry point.
  */
 
-import { createClaudeCodeAgent } from './claude-code.js'
-import { createCodexAgent } from './codex.js'
-import { createCursorAgent } from './cursor.js'
-import { createGeminiAgent } from './gemini.js'
-import { createOpenCodeAgent } from './opencode.js'
-import { getAgent, hasAgent, listAgents, registerAgent } from './registry.js'
+import type { AgentType } from '../types.js'
+import { createOpenCodeAgent, openCodeAgent } from './opencode.js'
 
-// Register all agent variants (Vercel AI Gateway + Direct API)
-registerAgent(createClaudeCodeAgent({ useVercelAiGateway: true })) // vercel-ai-gateway/claude-code
-registerAgent(createClaudeCodeAgent({ useVercelAiGateway: false })) // claude-code
-registerAgent(createCodexAgent({ useVercelAiGateway: true })) // vercel-ai-gateway/codex
-registerAgent(createCodexAgent({ useVercelAiGateway: false })) // codex
-registerAgent(createOpenCodeAgent()) // opencode
-registerAgent(createGeminiAgent()) // gemini
-registerAgent(createCursorAgent()) // cursor
+export function getAgent(name: AgentType) {
+  if (name !== 'opencode') {
+    throw new Error(`Unsupported agent: ${name}`)
+  }
+
+  return openCodeAgent
+}
 
 // Re-export agent types
 export type { Agent, AgentRunOptions, AgentRunResult } from './types.js'
-// Re-export registry functions
-export { getAgent, hasAgent, listAgents, registerAgent }
+export { createOpenCodeAgent, openCodeAgent }

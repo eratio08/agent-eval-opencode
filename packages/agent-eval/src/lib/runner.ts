@@ -119,7 +119,6 @@ export async function runExperiment(options: RunExperimentOptions): Promise<Expe
   const { config, fixtures, apiKey, resultsDir, experimentName, fingerprints, onProgress, smoke, rateLimiter } = options
   const startedAt = new Date()
 
-  // Get the agent from registry
   const agent = getAgent(config.agent)
 
   const emit = (event: ProgressEvent) => {
@@ -375,7 +374,7 @@ export async function runSingleEval<T extends ResolvedExperimentConfig['model']>
     verbose?: boolean
   },
 ): Promise<T extends Array<unknown> ? EvalRunData[] : EvalRunData> {
-  const agent = getAgent(options.agent ?? 'vercel-ai-gateway/claude-code')
+  const agent = getAgent(options.agent ?? 'opencode')
 
   const models: string[] = Array.isArray(options.model) ? options.model : [options.model]
   const prompt = options.editPrompt ? options.editPrompt(fixture.prompt) : fixture.prompt

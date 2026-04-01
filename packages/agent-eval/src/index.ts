@@ -4,7 +4,7 @@
  * Framework for testing AI coding agents in isolated sandboxes.
  */
 
-export { getAgent, listAgents, registerAgent } from './lib/agents/index.js'
+export { createOpenCodeAgent, getAgent, openCodeAgent } from './lib/agents/index.js'
 // Re-export transcript context constants
 export { TRANSCRIPT_CONTEXT_DIR, TRANSCRIPT_CONTEXT_PATH } from './lib/agents/shared.js'
 // Re-export agent utilities
@@ -13,7 +13,6 @@ export type { Agent, AgentRunOptions, AgentRunResult, ScriptResult } from './lib
 // Re-export classifier
 export {
   classifyFailure,
-  classifyWithAI,
   isClassifierEnabled,
   isNonModelFailure,
 } from './lib/classifier.js'
@@ -61,8 +60,6 @@ export type {
 } from './lib/o11y/index.js'
 export {
   loadTranscript,
-  parseClaudeCodeTranscript,
-  parseCodexTranscript,
   parseOpenCodeTranscript,
   parseTranscript,
   parseTranscriptSummary,

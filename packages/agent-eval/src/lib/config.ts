@@ -4,14 +4,14 @@
 
 import { minimatch } from 'minimatch'
 import { z } from 'zod'
-import { getAgent } from './agents/index.js'
+import { DEFAULT_OPENCODE_MODEL } from './agents/opencode.js'
 import type { EvalFilter, ExperimentConfig, ResolvedExperimentConfig } from './types.js'
 
 /**
  * Default configuration values.
  */
 export const CONFIG_DEFAULTS = {
-  model: 'opus' as const,
+  model: DEFAULT_OPENCODE_MODEL,
   evals: '*' as const,
   runs: 1,
   earlyExit: true,
@@ -25,15 +25,7 @@ export const CONFIG_DEFAULTS = {
  * Zod schema for validating experiment configuration.
  */
 const experimentConfigSchema = z.object({
-  agent: z.enum([
-    'vercel-ai-gateway/claude-code',
-    'claude-code',
-    'vercel-ai-gateway/codex',
-    'codex',
-    'opencode',
-    'gemini',
-    'cursor',
-  ]),
+  agent: z.literal('opencode'),
   model: z.union([z.string(), z.array(z.string())]).optional(),
   evals: z.union([z.string(), z.array(z.string()), z.function().args(z.string()).returns(z.boolean())]).optional(),
   runs: z.number().int().positive().optional(),
@@ -65,11 +57,7 @@ export function validateConfig(config: unknown): ExperimentConfig {
  * Resolves an experiment configuration by applying defaults.
  */
 export function resolveConfig(config: ExperimentConfig): ResolvedExperimentConfig {
-  // Validate agent exists
-  const agent = getAgent(config.agent)
-
-  // Get the default model based on the agent type
-  const defaultModel = config.model ?? agent.getDefaultModel()
+  const defaultModel = config.model ?? CONFIG_DEFAULTS.model
 
   return {
     agent: config.agent,
