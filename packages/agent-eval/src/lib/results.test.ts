@@ -44,6 +44,37 @@ describe('results utilities', () => {
     expect(runData.outputContent?.scripts?.build).toBe('build output')
   })
 
+  it('tracks deterministic and rubric summaries separately', () => {
+    const runData: EvalRunData[] = [
+      {
+        result: {
+          status: 'failed',
+          error: 'Rubric evaluation failed',
+          duration: 10,
+          deterministic: { status: 'passed' },
+          rubric: { status: 'failed', output: { overall_pass: false } },
+        },
+      },
+      {
+        result: {
+          status: 'passed',
+          duration: 15,
+          deterministic: { status: 'passed' },
+          rubric: { status: 'passed', output: { overall_pass: true } },
+        },
+      },
+    ]
+
+    const summary = createEvalSummary('rubric-eval', runData)
+
+    expect(summary.passedRuns).toBe(1)
+    expect(summary.passRate).toBe(50)
+    expect(summary.deterministic.passedRuns).toBe(2)
+    expect(summary.deterministic.passRate).toBe(100)
+    expect(summary.rubric?.passedRuns).toBe(1)
+    expect(summary.rubric?.passRate).toBe(50)
+  })
+
   it('creates experiment results with timestamps', () => {
     const config: ResolvedExperimentConfig = {
       agent: 'opencode',
@@ -119,6 +150,64 @@ describe('results utilities', () => {
     expect(parsedTranscript.agent).toBe('opencode')
   })
 
+  it('writes deterministic and rubric summaries to summary.json', () => {
+    const config: ResolvedExperimentConfig = {
+      agent: 'opencode',
+      model: 'github-copilot/claude-opus-4.6',
+      evals: ['eval-1'],
+      runs: 2,
+      earlyExit: false,
+      scripts: [],
+      timeout: 300,
+      sandbox: 'docker',
+      copyFiles: 'none',
+      rubric: {
+        prompt: 'Grade this output',
+        schema: { type: 'object' },
+        passField: 'overall_pass',
+      },
+    }
+
+    const evals = [
+      createEvalSummary('eval-1', [
+        {
+          result: {
+            status: 'failed',
+            error: 'Rubric evaluation failed',
+            duration: 10,
+            deterministic: { status: 'passed' },
+            rubric: { status: 'failed', output: { overall_pass: false } },
+          },
+        },
+        {
+          result: {
+            status: 'passed',
+            duration: 12,
+            deterministic: { status: 'passed' },
+            rubric: { status: 'passed', output: { overall_pass: true } },
+          },
+        },
+      ]),
+    ]
+
+    const results = createExperimentResults(
+      config,
+      evals,
+      new Date('2024-01-26T12:00:00Z'),
+      new Date('2024-01-26T12:01:00Z'),
+    )
+
+    const outputDir = saveResults(results, {
+      resultsDir: TEST_DIR,
+      experimentName: 'test-experiment',
+    })
+
+    const summaryJson = JSON.parse(readFileSync(join(outputDir, 'eval-1', 'summary.json'), 'utf-8'))
+    expect(summaryJson.passRate).toBe('50%')
+    expect(summaryJson.deterministic).toEqual({ totalRuns: 2, passedRuns: 2, passRate: '100%' })
+    expect(summaryJson.rubric).toEqual({ totalRuns: 2, passedRuns: 1, passRate: '50%' })
+  })
+
   it('formats result tables and run summaries', () => {
     const config: ResolvedExperimentConfig = {
       agent: 'opencode',
@@ -164,5 +253,33 @@ describe('results utilities', () => {
 
     const result = scanReusableResults(TEST_DIR, 'my-exp', { 'eval-1': 'abc123' })
     expect(result.get('eval-1')?.fingerprint).toBe('abc123')
+  })
+
+  it('skips unclassified zero-pass results', () => {
+    const expDir = join(TEST_DIR, 'my-exp', '2024-01-26T12-00-00.000Z', 'eval-1')
+    mkdirSync(expDir, { recursive: true })
+    writeFileSync(
+      join(expDir, 'summary.json'),
+      JSON.stringify({ totalRuns: 2, passedRuns: 0, passRate: '0%', meanDuration: 10, fingerprint: 'abc123' }),
+    )
+
+    const result = scanReusableResults(TEST_DIR, 'my-exp', { 'eval-1': 'abc123' })
+    expect(result.size).toBe(0)
+  })
+
+  it('reuses classified model failures with zero passed runs', () => {
+    const expDir = join(TEST_DIR, 'my-exp', '2024-01-26T12-00-00.000Z', 'eval-1')
+    mkdirSync(expDir, { recursive: true })
+    writeFileSync(
+      join(expDir, 'summary.json'),
+      JSON.stringify({ totalRuns: 2, passedRuns: 0, passRate: '0%', meanDuration: 10, fingerprint: 'abc123' }),
+    )
+    writeFileSync(
+      join(expDir, 'classification.json'),
+      JSON.stringify({ failureType: 'model', failureReason: 'Wrong code' }),
+    )
+
+    const result = scanReusableResults(TEST_DIR, 'my-exp', { 'eval-1': 'abc123' })
+    expect(result.size).toBe(1)
   })
 })
